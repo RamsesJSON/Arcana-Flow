@@ -30,6 +30,49 @@
     --transition-speed: 0.3s;
 }
 
+/* Drag & Drop Styles */
+.drag-handle {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--text-muted);
+    cursor: grab;
+    z-index: 15;
+    font-size: 1rem;
+    opacity: 0.5;
+    transition: opacity 0.2s;
+}
+
+.drag-handle:hover {
+    opacity: 1;
+    color: var(--gold-primary);
+}
+
+.dragging {
+    opacity: 0.5;
+    transform: scale(0.98);
+    box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+}
+
+.drag-over {
+    border: 2px dashed var(--gold-primary) !important;
+    background: rgba(212, 175, 55, 0.1) !important;
+}
+
+[draggable="true"] {
+    cursor: grab;
+}
+
+[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.mastery-card-enhanced.completed {
+    opacity: 0.8;
+    border: 1px solid var(--gold-primary);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -914,11 +957,59 @@ a {
     width: 100%;
     height: 100%;
     z-index: 2000;
-    background: rgba(0, 0, 0, 0.95);
-    backdrop-filter: blur(10px);
+    background: radial-gradient(circle at center, rgba(20, 10, 40, 0.98), rgba(0, 0, 0, 0.99));
+    backdrop-filter: blur(20px);
     align-items: center;
     justify-content: center;
     flex-direction: column;
+    gap: 30px;
+    overflow: hidden;
+}
+
+.breathing-particles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.breathing-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    animation: particle-float 8s infinite ease-in-out;
+    opacity: 0;
+}
+
+@keyframes particle-float {
+    0% {
+        transform: translateY(100vh) scale(0);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(-100px) scale(1);
+        opacity: 0;
+    }
+}
+
+@keyframes particle-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 0.6;
+    }
+    50% {
+        transform: scale(1.5);
+        opacity: 1;
+    }
 }
 
 .breathing-overlay.active {
@@ -927,54 +1018,141 @@ a {
 
 .breathing-container {
     position: relative;
-    width: 300px;
-    height: 300px;
+    width: 400px;
+    height: 400px;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
 .breathing-circle {
-    width: 100px;
-    height: 100px;
+    width: 150px;
+    height: 150px;
     border-radius: 50%;
-    background: radial-gradient(circle, var(--gold-primary) 0%, transparent 70%);
-    box-shadow: 0 0 30px var(--gold-glow);
+    background: radial-gradient(circle, rgba(212, 175, 55, 0.3), rgba(138, 43, 226, 0.2));
+    box-shadow: 0 0 50px rgba(212, 175, 55, 0.6), 0 0 100px rgba(138, 43, 226, 0.4);
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-direction: column;
     transition: all 4s ease-in-out;
+    position: relative;
+}
+
+.breathing-timer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -80%);
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--gold-primary);
+    font-family: var(--font-heading);
+    text-shadow: 0 0 20px var(--gold-glow), 0 0 40px var(--gold-glow);
+    z-index: 10;
 }
 
 .breathing-text {
     position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, 50%);
     font-size: 1.5rem;
+    font-weight: 500;
     color: var(--text-main);
     font-family: var(--font-heading);
-    text-shadow: 0 0 10px #000;
+    text-shadow: 0 0 15px rgba(0, 0, 0, 0.8);
+    text-transform: uppercase;
+    letter-spacing: 3px;
 }
 
-.breathing-controls {
-    margin-top: 50px;
+.breathing-controls-top {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10;
+}
+
+.breathing-controls-bottom {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    z-index: 10;
+}
+
+.breathing-instruction {
+    position: absolute;
+    bottom: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 450px;
+    text-align: center;
+    color: #ffffff;
+    font-size: 1.05rem;
+    font-weight: 500;
+    line-height: 1.6;
+    padding: 18px 25px;
+    background: rgba(15, 15, 30, 0.85);
+    border-radius: 12px;
+    border: 2px solid rgba(212, 175, 55, 0.4);
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.3), 0 0 40px rgba(138, 43, 226, 0.2);
+    min-height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
 .input-transparent {
-    background: transparent;
-    border: 1px solid var(--text-muted);
-    color: var(--text-muted);
-    padding: 10px;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--gold-primary);
+    color: var(--text-main);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.input-transparent:hover {
+    background: rgba(212, 175, 55, 0.1);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+.input-transparent:focus {
+    outline: none;
+    border-color: var(--gold-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
 }
 
 .overlay-close {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
+    top: 30px;
+    right: 30px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid var(--gold-primary);
+    color: var(--gold-primary);
     font-size: 2rem;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.overlay-close:hover {
+    background: rgba(212, 175, 55, 0.2);
+    box-shadow: 0 0 15px var(--gold-glow);
+    transform: rotate(90deg);
 }
 
 /* Pomodoro */
@@ -1807,8 +1985,8 @@ input:checked + .toggle-slider:before {
     height: 6px;
     background: var(--gold-primary);
     border-radius: 50%;
-    margin: 5px auto 0;
-    box-shadow: 0 0 5px var(--gold-glow);
+    box-shadow: 0 0 5px currentColor;
+    flex-shrink: 0;
 }
 
 .calendar-sidebar {
@@ -1908,6 +2086,77 @@ input:checked + .toggle-slider:before {
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
+}
+
+/* Flow Completion Checkboxes */
+.flow-check {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--gold-primary);
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+    color: var(--gold-primary);
+}
+
+.flow-check:hover {
+    background: rgba(212, 175, 55, 0.2);
+    box-shadow: 0 0 10px var(--gold-glow);
+    transform: scale(1.1);
+}
+
+.flow-check.checked {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    box-shadow: 0 0 15px var(--gold-glow);
+}
+
+.flow-check-inline {
+    width: 24px;
+    height: 24px;
+    border: 2px solid var(--gold-primary);
+    border-radius: 6px;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1rem;
+    color: var(--gold-primary);
+    flex-shrink: 0;
+}
+
+.flow-check-inline:hover {
+    background: rgba(212, 175, 55, 0.2);
+    box-shadow: 0 0 8px var(--gold-glow);
+}
+
+.flow-check-inline.checked {
+    background: var(--gold-primary);
+    color: var(--bg-primary);
+    box-shadow: 0 0 10px var(--gold-glow);
+}
+
+/* Quick Add Buttons for Mastery */
+.quick-add-btn {
+    padding: 8px 12px !important;
+    font-size: 0.85rem;
+    border-color: var(--gold-primary) !important;
+    color: var(--gold-primary);
+    transition: all 0.3s ease;
+}
+
+.quick-add-btn:hover {
+    background: rgba(212, 175, 55, 0.2) !important;
+    box-shadow: 0 0 8px var(--gold-glow);
+    transform: translateY(-2px);
 }
 
 /* Badge Colors */

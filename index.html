@@ -444,6 +444,16 @@
                 <p>Track your 10,000 hour journey to mastery</p>
                 <button class="btn btn-gold" onclick="openMasteryModal()">Create Goal</button>
             </div>
+            
+            <!-- Completed Mastery Section -->
+            <div id="masteryCompletedSection" style="display:none; margin-top:40px;">
+                <h2 style="color:var(--gold-primary); margin-bottom:20px; display:flex; align-items:center; gap:10px;">
+                    <span>🏆</span> Completed Goals
+                </h2>
+                <div class="mastery-grid" id="masteryCompletedGrid">
+                    <!-- Completed mastery goals populated here -->
+                </div>
+            </div>
         </section>
 
         <!-- Calendar Page -->
@@ -686,7 +696,7 @@
                     <h3>About</h3>
                     <div class="about-info">
                         <p><strong>Arcana Flow</strong> - Mystical Productivity Tool</p>
-                        <p>Version 1.1.0</p>
+                        <p>Version 1.5.0</p>
                         <p class="hint">All data is stored locally in your browser.</p>
                     </div>
                 </div>
@@ -713,8 +723,16 @@
                 </div>
                 <div class="form-group">
                     <label>Cover Image (optional)</label>
-                    <input type="file" id="flowImage" accept="image/*" class="input" onchange="handleFlowCoverUpload(this)">
-                    <div id="flowImagePreview" style="margin-top:10px; display:none; width:100%; height:150px; background-size:cover; background-position:center; border-radius:6px;"></div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
+                        <select id="flowCoverPreset" class="input" style="flex:1; min-width:150px;" onchange="applyCoverImagePreset(this.value)">
+                            <option value="">Choose Preset...</option>
+                        </select>
+                        <span style="color:#666; font-size:0.8rem;">or</span>
+                        <input type="file" id="flowImage" accept="image/*" class="input" style="flex:1; min-width:150px;" onchange="handleFlowCoverUpload(this)">
+                    </div>
+                    <div id="flowImagePreview" style="margin-top:10px; display:none; width:100%; height:150px; background-size:cover; background-position:center; border-radius:6px; position:relative;">
+                        <button onclick="clearCoverImage()" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.75rem;">✕ Clear</button>
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -762,6 +780,7 @@
                             <button class="btn btn-sm btn-outline" onclick="addComponent('timer')">+ Timer</button>
                             <button class="btn btn-sm btn-outline" onclick="addComponent('stopwatch')">+ Stopwatch</button>
                             <button class="btn btn-sm btn-outline" onclick="addComponent('reps')">+ Rep Counter</button>
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('breathing')">+ Breathing</button>
                         </div>
                     </div>
                     <div class="components-list" id="componentsList">
@@ -817,6 +836,65 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('workingBuilderModal')">Cancel</button>
                 <button class="btn btn-gold" onclick="saveWorking()">Begin Working</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Breathing Pattern Manager Modal -->
+    <div class="modal" id="breathingPatternModal">
+        <div class="modal-overlay" onclick="closeBreathingPatternModal()"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Breathing Patterns</h2>
+                <button class="modal-close" onclick="closeBreathingPatternModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom:20px;">
+                    <h3 style="margin-bottom:10px;">Create New Pattern</h3>
+                    <div class="form-group">
+                        <label>Pattern Name</label>
+                        <input type="text" id="breathPatternName" placeholder="e.g., Custom 5-5-5-5" class="input">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Inhale (seconds)</label>
+                            <input type="number" id="breathInhale" class="input" value="4" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Hold 1 (seconds)</label>
+                            <input type="number" id="breathHold1" class="input" value="4" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Exhale (seconds)</label>
+                            <input type="number" id="breathExhale" class="input" value="4" min="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Hold 2 (seconds)</label>
+                            <input type="number" id="breathHold2" class="input" value="4" min="0">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Instructions - Inhale</label>
+                        <input type="text" id="breathInstructInhale" class="input" placeholder="e.g., Breathe in slowly through your nose">
+                    </div>
+                    <div class="form-group">
+                        <label>Instructions - Hold 1</label>
+                        <input type="text" id="breathInstructHold1" class="input" placeholder="e.g., Hold the breath gently">
+                    </div>
+                    <div class="form-group">
+                        <label>Instructions - Exhale</label>
+                        <input type="text" id="breathInstructExhale" class="input" placeholder="e.g., Release slowly">
+                    </div>
+                    <div class="form-group">
+                        <label>Instructions - Hold 2</label>
+                        <input type="text" id="breathInstructHold2" class="input" placeholder="e.g., Rest in the emptiness">
+                    </div>
+                    <button class="btn btn-gold" onclick="saveBreathingPattern()">Add Pattern</button>
+                </div>
+                <div style="border-top:1px solid var(--border-color); padding-top:20px;">
+                    <h3 style="margin-bottom:15px;">Your Custom Patterns</h3>
+                    <div id="customPatternsList"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -892,7 +970,7 @@
                 </div>
                 <div class="form-group">
                     <label id="masteryGoalLabel">Goal (Hours)</label>
-                    <select id="masteryGoal" class="input">
+                    <select id="masteryGoal" class="input" onchange="toggleCustomGoal()">
                         <option value="10">10</option>
                         <option value="100">100</option>
                         <option value="1000">1,000</option>
@@ -901,8 +979,8 @@
                     </select>
                 </div>
                 <div class="form-group" id="customHoursGroup" style="display:none">
-                    <label>Custom Hours</label>
-                    <input type="number" id="customHours" min="1" class="input">
+                    <label>Custom Goal</label>
+                    <input type="number" id="customHours" min="1" class="input" placeholder="Enter custom number">
                 </div>
                 <div class="form-group">
                     <label>Color</label>
@@ -1059,18 +1137,23 @@
 
     <!-- Breathing Visualizer Overlay -->
     <div class="breathing-overlay" id="breathingOverlay">
+        <div class="breathing-particles" id="breathingParticles"></div>
         <button class="overlay-close" onclick="closeBreathingExercise()">×</button>
+        <div class="breathing-controls-top">
+            <select id="breathingPattern" class="input-transparent">
+                <!-- Options populated dynamically from config.js -->
+            </select>
+        </div>
         <div class="breathing-container">
             <div class="breathing-circle">
-                <div class="breathing-text" id="breathingText">Inhale</div>
+                <div class="breathing-timer" id="breathingTimer"></div>
+                <div class="breathing-text" id="breathingText">Ready</div>
             </div>
-            <div class="breathing-controls">
-                <select id="breathingPattern" class="input-transparent">
-                    <option value="4-4-4-4">Box Breathing (4-4-4-4)</option>
-                    <option value="4-7-8">Relaxing (4-7-8)</option>
-                    <option value="5-5">Coherence (5-5)</option>
-                </select>
-            </div>
+            <div class="breathing-instruction" id="breathingInstruction">Select a pattern and press Start</div>
+        </div>
+        <div class="breathing-controls-bottom">
+            <button class="btn btn-gold" id="breathingStartBtn" onclick="startBreathingLoop()">Start</button>
+            <button class="btn btn-outline" id="breathingStopBtn" onclick="stopBreathingLoop()" style="display:none;">Stop</button>
         </div>
     </div>
 
