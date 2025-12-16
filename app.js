@@ -120,6 +120,25 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- KEYBOARD SHORTCUTS ---
 function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
+        // Check if flow runner is active and we're on a reps step
+        const flowRunnerActive = document.getElementById('flowRunner')?.classList.contains('active');
+        const isRepsStep = flowRunnerActive && runnerState.flow && 
+            runnerState.flow.steps[runnerState.stepIndex]?.type === 'reps';
+        
+        // Handle reps shortcuts (spacebar, arrow keys, +/-)
+        if (isRepsStep) {
+            if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'ArrowUp' || e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                window.incrementRunnerReps();
+                return;
+            }
+            if (e.key === 'ArrowDown' || e.key === '-' || e.key === '_') {
+                e.preventDefault();
+                window.decrementRunnerReps();
+                return;
+            }
+        }
+        
         // Don't trigger shortcuts if user is typing in an input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         
@@ -148,6 +167,48 @@ function initKeyboardShortcuts() {
                 break;
         }
     });
+    
+    // Click anywhere on flow runner to increment reps (except on buttons)
+    document.getElementById('flowRunner')?.addEventListener('click', (e) => {
+        // Don't increment if clicking on a button or interactive element
+        if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
+        
+        const isRepsStep = runnerState.flow && 
+            runnerState.flow.steps[runnerState.stepIndex]?.type === 'reps';
+        
+        if (isRepsStep) {
+            window.incrementRunnerReps();
+        }
+    });
+    
+    // Volume button support for mobile (experimental - works on some Android browsers)
+    // This uses the volumechange event which fires when volume buttons are pressed
+    try {
+        // Create a silent audio context to enable volume detection
+        if ('AudioContext' in window || 'webkitAudioContext' in window) {
+            let lastVolume = null;
+            
+            // Monitor volume changes
+            const checkVolume = () => {
+                const audio = document.createElement('audio');
+                audio.volume = 0.5; // Reference volume
+            };
+            
+            // Some browsers support this media key API
+            if ('mediaSession' in navigator) {
+                navigator.mediaSession.setActionHandler('pause', () => {
+                    const isRepsStep = runnerState.flow && 
+                        runnerState.flow.steps[runnerState.stepIndex]?.type === 'reps';
+                    if (isRepsStep && document.getElementById('flowRunner')?.classList.contains('active')) {
+                        window.incrementRunnerReps();
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        // Volume button detection not supported
+        console.log('Volume button shortcuts not available in this browser');
+    }
 }
 
 // --- GLOBAL HELPERS (Exposed for HTML onclick) ---
@@ -1259,10 +1320,14 @@ function renderRunnerStep() {
         runnerState.currentReps = 0;
         runnerState.targetReps = step.targetReps || 10;
         mainDisplayHtml = `
-            <div class="runner-reps" id="runnerRepsDisplay" onclick="incrementRunnerReps()" style="cursor:pointer; user-select:none;">
-                <span style="font-size:4rem; font-weight:bold; color:var(--gold-primary)">0</span>
+            <div class="runner-reps" id="runnerRepsDisplay" style="user-select:none;">
+                <span id="repsCount" style="font-size:4rem; font-weight:bold; color:var(--gold-primary)">0</span>
                 <span style="font-size:1.5rem; color:var(--text-muted)">/ ${runnerState.targetReps}</span>
-                <div style="font-size:0.9rem; color:var(--text-muted); margin-top:10px;">Tap to count</div>
+                <div style="display:flex; gap:20px; justify-content:center; margin-top:15px;">
+                    <button class="btn btn-outline btn-sm" onclick="decrementRunnerReps(event)" style="padding:10px 20px; font-size:1.2rem;">−</button>
+                    <button class="btn btn-gold btn-sm" onclick="incrementRunnerReps(event)" style="padding:10px 30px; font-size:1.2rem;">+</button>
+                </div>
+                <div style="font-size:0.85rem; color:var(--text-muted); margin-top:15px;">Tap anywhere, press Space, or use +/− buttons</div>
             </div>
         `;
     } else if (step.type === 'stopwatch') {
@@ -1311,24 +1376,37 @@ function renderRunnerStep() {
     }
 }
 
-window.incrementRunnerReps = () => {
-    if (runnerState.flow.steps[runnerState.stepIndex].type !== 'reps') return;
+window.incrementRunnerReps = (event) => {
+    if (event) event.stopPropagation(); // Prevent double-counting from click bubbling
+    if (!runnerState.flow || runnerState.flow.steps[runnerState.stepIndex].type !== 'reps') return;
     
     runnerState.currentReps++;
-    const el = document.getElementById('runnerRepsDisplay');
-    if (el) {
-        el.innerHTML = `
-            <span style="font-size:4rem; font-weight:bold; color:var(--gold-primary)">${runnerState.currentReps}</span>
-            <span style="font-size:1.5rem; color:var(--text-muted)">/ ${runnerState.targetReps}</span>
-            <div style="font-size:0.9rem; color:var(--text-muted); margin-top:10px;">Tap to count</div>
-        `;
-    }
+    updateRepsDisplay();
     
     if (runnerState.currentReps >= runnerState.targetReps) {
         showNotification("Target Reps Reached!", "gold");
         playNotificationSound();
     }
 };
+
+window.decrementRunnerReps = (event) => {
+    if (event) event.stopPropagation(); // Prevent triggering increment from click bubbling
+    if (!runnerState.flow || runnerState.flow.steps[runnerState.stepIndex].type !== 'reps') return;
+    if (runnerState.currentReps <= 0) return;
+    
+    runnerState.currentReps--;
+    updateRepsDisplay();
+};
+
+function updateRepsDisplay() {
+    const el = document.getElementById('repsCount');
+    if (el) {
+        el.textContent = runnerState.currentReps;
+        // Quick pulse animation
+        el.style.transform = 'scale(1.2)';
+        setTimeout(() => el.style.transform = 'scale(1)', 100);
+    }
+}
 
 function startRunnerTimer(mode = 'countdown') {
     clearInterval(runnerState.timer);
@@ -2113,11 +2191,11 @@ function createParticles(color) {
         particle.style.animationDuration = duration + 's';
         
         if (color === 'gold') {
-            particle.style.background = `radial-gradient(circle, rgba(255, 215, 0, 0.9), rgba(255, 165, 0, 0.6))`;
-            particle.style.boxShadow = `0 0 ${size * 3}px rgba(255, 215, 0, 0.8), 0 0 ${size * 5}px rgba(212, 175, 55, 0.5)`;
+            particle.style.background = `radial-gradient(circle, rgba(255, 240, 100, 1), rgba(255, 200, 50, 0.8))`;
+            particle.style.boxShadow = `0 0 ${size * 4}px rgba(255, 220, 100, 1), 0 0 ${size * 8}px rgba(255, 180, 50, 0.8), 0 0 ${size * 12}px rgba(255, 140, 0, 0.5)`;
         } else if (color === 'cyan') {
-            particle.style.background = `radial-gradient(circle, rgba(0, 255, 255, 0.9), rgba(0, 200, 255, 0.6))`;
-            particle.style.boxShadow = `0 0 ${size * 3}px rgba(0, 255, 255, 0.8), 0 0 ${size * 5}px rgba(0, 150, 255, 0.5)`;
+            particle.style.background = `radial-gradient(circle, rgba(150, 255, 255, 1), rgba(0, 220, 255, 0.8))`;
+            particle.style.boxShadow = `0 0 ${size * 4}px rgba(100, 255, 255, 1), 0 0 ${size * 8}px rgba(0, 200, 255, 0.8), 0 0 ${size * 12}px rgba(0, 150, 255, 0.5)`;
         }
         
         container.appendChild(particle);
@@ -2126,6 +2204,65 @@ function createParticles(color) {
             if (particle.parentNode) particle.remove();
         }, duration * 1000 + delay * 1000);
     }
+}
+
+// Convert old timing format to new phases format
+function convertToPhases(patternData) {
+    // If already has phases array, return it
+    if (patternData.phases && Array.isArray(patternData.phases)) {
+        return patternData.phases;
+    }
+    
+    // Convert old timing format to phases
+    const timing = patternData.timing || { inhale: 4, hold1: 4, exhale: 4, hold2: 4 };
+    const instructions = patternData.instructions || {};
+    const phases = [];
+    
+    if (timing.inhale > 0) {
+        phases.push({ type: 'inhale', duration: timing.inhale, instruction: instructions.inhale || '' });
+    }
+    if (timing.hold1 > 0) {
+        phases.push({ type: 'hold', duration: timing.hold1, instruction: instructions.hold1 || '' });
+    }
+    if (timing.exhale > 0) {
+        phases.push({ type: 'exhale', duration: timing.exhale, instruction: instructions.exhale || '' });
+    }
+    if (timing.hold2 > 0) {
+        phases.push({ type: 'hold', duration: timing.hold2, instruction: instructions.hold2 || '' });
+    }
+    
+    return phases.length > 0 ? phases : [{ type: 'inhale', duration: 4 }, { type: 'exhale', duration: 4 }];
+}
+
+// Get visual settings for each phase type
+function getPhaseVisuals(phaseType) {
+    const visuals = {
+        inhale: {
+            transform: 'scale(2.8)',
+            opacity: '1',
+            background: 'radial-gradient(circle at 30% 30%, rgba(255, 240, 150, 1), rgba(255, 200, 50, 0.9) 40%, rgba(255, 150, 0, 0.7) 100%)',
+            boxShadow: '0 0 80px rgba(255, 220, 100, 1), 0 0 150px rgba(255, 180, 50, 0.9), 0 0 220px rgba(255, 140, 0, 0.6), inset 0 0 60px rgba(255, 255, 200, 0.5)',
+            particles: 'gold',
+            defaultLabel: 'Inhale'
+        },
+        hold: {
+            transform: null, // Keep current transform
+            opacity: null,
+            background: 'radial-gradient(circle at 30% 30%, rgba(100, 255, 255, 1), rgba(0, 220, 255, 0.9) 40%, rgba(0, 150, 255, 0.7) 100%)',
+            boxShadow: '0 0 80px rgba(0, 255, 255, 1), 0 0 150px rgba(0, 200, 255, 0.9), 0 0 220px rgba(100, 150, 255, 0.6), inset 0 0 60px rgba(200, 255, 255, 0.5)',
+            particles: 'cyan',
+            defaultLabel: 'Hold'
+        },
+        exhale: {
+            transform: 'scale(1)',
+            opacity: '0.9',
+            background: 'radial-gradient(circle at 30% 30%, rgba(255, 200, 100, 0.9), rgba(255, 160, 50, 0.7) 40%, rgba(200, 100, 50, 0.5) 100%)',
+            boxShadow: '0 0 60px rgba(255, 180, 80, 0.9), 0 0 120px rgba(255, 140, 50, 0.7), 0 0 180px rgba(200, 100, 50, 0.4), inset 0 0 40px rgba(255, 220, 150, 0.3)',
+            particles: 'gold',
+            defaultLabel: 'Exhale'
+        }
+    };
+    return visuals[phaseType] || visuals.hold;
 }
 
 function runBreathingLoop() {
@@ -2137,8 +2274,7 @@ function runBreathingLoop() {
     if (!text || !circle) return;
     
     // Parse breathing pattern from CONFIG + custom patterns
-    let pattern = { inhale: 4, hold1: 4, exhale: 4, hold2: 4 }; // Default fallback
-    let instructions = {}; // Store instructions if available
+    let phases = [{ type: 'inhale', duration: 4 }, { type: 'hold', duration: 4 }, { type: 'exhale', duration: 4 }, { type: 'hold', duration: 4 }]; // Default
     
     if (patternSelect) {
         const selectedValue = patternSelect.value;
@@ -2146,22 +2282,20 @@ function runBreathingLoop() {
         // Check CONFIG patterns first
         if (typeof CONFIG !== 'undefined' && CONFIG.BREATHING_PATTERNS) {
             const configPattern = CONFIG.BREATHING_PATTERNS.find(p => p.value === selectedValue);
-            if (configPattern && configPattern.timing) {
-                pattern = configPattern.timing;
-                instructions = configPattern.instructions || {};
+            if (configPattern) {
+                phases = convertToPhases(configPattern);
             }
         }
         
-        // Check custom patterns
+        // Check custom patterns (overrides CONFIG if same value)
         const customPattern = AppState.breathingPatterns.find(p => p.value === selectedValue);
-        if (customPattern && customPattern.timing) {
-            pattern = customPattern.timing;
-            instructions = customPattern.instructions || {};
+        if (customPattern) {
+            phases = convertToPhases(customPattern);
         }
     }
     
-    let phase = 'inhale';
-    let timeLeft = pattern.inhale;
+    let phaseIndex = 0;
+    let timeLeft = phases[0].duration;
     let timerInterval;
     
     // Store timer interval for cleanup
@@ -2173,7 +2307,7 @@ function runBreathingLoop() {
         }
     };
     
-    const loop = () => {
+    const runPhase = () => {
         if (!document.getElementById('breathingOverlay').classList.contains('active') || !AppState.breathingActive) {
             if (timerInterval) clearInterval(timerInterval);
             return;
@@ -2181,95 +2315,51 @@ function runBreathingLoop() {
         
         if (timerInterval) clearInterval(timerInterval);
         
-        if (phase === 'inhale') {
-            text.textContent = "Inhale";
-            if (instructionDisplay) instructionDisplay.textContent = instructions.inhale || '';
-            circle.style.transform = "scale(2.5)";
-            circle.style.opacity = "1";
-            circle.style.background = "radial-gradient(circle, rgba(255, 215, 0, 0.6), rgba(212, 175, 55, 0.4))";
-            circle.style.boxShadow = "0 0 60px rgba(255, 215, 0, 0.8), 0 0 120px rgba(212, 175, 55, 0.6), inset 0 0 40px rgba(255, 215, 0, 0.3)";
-            createParticles('gold');
-            timeLeft = pattern.inhale;
-            updateTimer();
-            
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                updateTimer();
-                if (timeLeft <= 0) clearInterval(timerInterval);
-            }, 1000);
-            AppState.breathingTimerInterval = timerInterval;
-            
-            AppState.breathingInterval = setTimeout(() => { 
-                phase = pattern.hold1 > 0 ? 'hold1' : 'exhale'; 
-                loop(); 
-            }, pattern.inhale * 1000);
-            
-        } else if (phase === 'hold1' && pattern.hold1 > 0) {
-            text.textContent = "Hold";
-            if (instructionDisplay) instructionDisplay.textContent = instructions.hold1 || '';
-            circle.style.background = "radial-gradient(circle, rgba(0, 255, 255, 0.5), rgba(0, 150, 255, 0.4))";
-            circle.style.boxShadow = "0 0 60px rgba(0, 255, 255, 0.8), 0 0 120px rgba(0, 150, 255, 0.6), inset 0 0 40px rgba(0, 255, 255, 0.3)";
-            createParticles('cyan');
-            timeLeft = pattern.hold1;
-            updateTimer();
-            
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                updateTimer();
-                if (timeLeft <= 0) clearInterval(timerInterval);
-            }, 1000);
-            AppState.breathingTimerInterval = timerInterval;
-            
-            AppState.breathingInterval = setTimeout(() => { phase = 'exhale'; loop(); }, pattern.hold1 * 1000);
-            
-        } else if (phase === 'exhale') {
-            text.textContent = "Exhale";
-            if (instructionDisplay) instructionDisplay.textContent = instructions.exhale || '';
-            circle.style.transform = "scale(1)";
-            circle.style.opacity = "0.8";
-            circle.style.background = "radial-gradient(circle, rgba(255, 215, 0, 0.4), rgba(184, 134, 11, 0.3))";
-            circle.style.boxShadow = "0 0 50px rgba(255, 215, 0, 0.6), 0 0 100px rgba(212, 175, 55, 0.4), inset 0 0 30px rgba(255, 215, 0, 0.2)";
-            createParticles('gold');
-            timeLeft = pattern.exhale;
-            updateTimer();
-            
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                updateTimer();
-                if (timeLeft <= 0) clearInterval(timerInterval);
-            }, 1000);
-            AppState.breathingTimerInterval = timerInterval;
-            
-            AppState.breathingInterval = setTimeout(() => { 
-                phase = pattern.hold2 > 0 ? 'hold2' : 'inhale'; 
-                loop(); 
-            }, pattern.exhale * 1000);
-            
-        } else if (phase === 'hold2' && pattern.hold2 > 0) {
-            text.textContent = "Hold";
-            if (instructionDisplay) instructionDisplay.textContent = instructions.hold2 || '';
-            circle.style.background = "radial-gradient(circle, rgba(0, 255, 255, 0.5), rgba(0, 150, 255, 0.4))";
-            circle.style.boxShadow = "0 0 60px rgba(0, 255, 255, 0.8), 0 0 120px rgba(0, 150, 255, 0.6), inset 0 0 40px rgba(0, 255, 255, 0.3)";
-            createParticles('cyan');
-            timeLeft = pattern.hold2;
-            updateTimer();
-            
-            timerInterval = setInterval(() => {
-                timeLeft--;
-                updateTimer();
-                if (timeLeft <= 0) clearInterval(timerInterval);
-            }, 1000);
-            AppState.breathingTimerInterval = timerInterval;
-            
-            AppState.breathingInterval = setTimeout(() => { phase = 'inhale'; loop(); }, pattern.hold2 * 1000);
+        const currentPhase = phases[phaseIndex];
+        const visuals = getPhaseVisuals(currentPhase.type);
+        
+        // Set label (custom label or default)
+        text.textContent = currentPhase.label || visuals.defaultLabel;
+        
+        // Set instruction if available
+        if (instructionDisplay) {
+            instructionDisplay.textContent = currentPhase.instruction || '';
         }
+        
+        // Apply visuals (only if not null - allows hold to keep previous transform)
+        if (visuals.transform !== null) circle.style.transform = visuals.transform;
+        if (visuals.opacity !== null) circle.style.opacity = visuals.opacity;
+        circle.style.background = visuals.background;
+        circle.style.boxShadow = visuals.boxShadow;
+        createParticles(visuals.particles);
+        
+        timeLeft = currentPhase.duration;
+        updateTimer();
+        
+        // Countdown timer
+        timerInterval = setInterval(() => {
+            timeLeft--;
+            updateTimer();
+            if (timeLeft <= 0) clearInterval(timerInterval);
+        }, 1000);
+        AppState.breathingTimerInterval = timerInterval;
+        
+        // Move to next phase
+        AppState.breathingInterval = setTimeout(() => {
+            phaseIndex = (phaseIndex + 1) % phases.length; // Loop back to start
+            runPhase();
+        }, currentPhase.duration * 1000);
     };
-    loop();
+    
+    runPhase();
 }
 
 // --- BREATHING PATTERN MANAGER ---
 window.openBreathingPatternManager = () => {
+    // Reset form for new pattern
+    clearBreathingForm();
     renderCustomPatterns();
+    renderBreathingPhases();
     window.openModal('breathingPatternModal');
 };
 
@@ -2296,13 +2386,19 @@ function renderCustomPatterns() {
         item.className = 'component-item';
         item.style.marginBottom = '10px';
         
-        const timing = pattern.timing;
-        const timingStr = `${timing.inhale}-${timing.hold1}-${timing.exhale}-${timing.hold2}`;
+        // Generate phase summary
+        let phaseSummary = '';
+        if (pattern.phases && Array.isArray(pattern.phases)) {
+            phaseSummary = pattern.phases.map(p => `${p.label || p.type}:${p.duration}s`).join(' → ');
+        } else if (pattern.timing) {
+            const t = pattern.timing;
+            phaseSummary = `${t.inhale}-${t.hold1}-${t.exhale}-${t.hold2}`;
+        }
         
         item.innerHTML = `
             <div style="flex:1;">
                 <div style="font-weight:600; color:var(--gold-primary); margin-bottom:5px;">${pattern.name}</div>
-                <div style="font-size:0.85rem; color:var(--text-muted);">Pattern: ${timingStr}</div>
+                <div style="font-size:0.85rem; color:var(--text-muted);">${phaseSummary}</div>
             </div>
             <div style="display:flex; gap:10px;">
                 <button class="btn-sm btn-outline" onclick="editBreathingPattern(${index})">Edit</button>
@@ -2314,31 +2410,90 @@ function renderCustomPatterns() {
     });
 }
 
+// Temporary storage for phases being edited
+window.breathingPhasesTemp = [];
+
+window.addBreathingPhase = (type = 'inhale', duration = 4, label = '', instruction = '') => {
+    window.breathingPhasesTemp.push({ type, duration, label, instruction });
+    renderBreathingPhases();
+};
+
+window.removeBreathingPhase = (index) => {
+    window.breathingPhasesTemp.splice(index, 1);
+    renderBreathingPhases();
+};
+
+window.updateBreathingPhase = (index, field, value) => {
+    if (window.breathingPhasesTemp[index]) {
+        if (field === 'duration') {
+            window.breathingPhasesTemp[index][field] = parseInt(value) || 0;
+        } else {
+            window.breathingPhasesTemp[index][field] = value;
+        }
+    }
+};
+
+window.movePhase = (index, direction) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= window.breathingPhasesTemp.length) return;
+    const temp = window.breathingPhasesTemp[index];
+    window.breathingPhasesTemp[index] = window.breathingPhasesTemp[newIndex];
+    window.breathingPhasesTemp[newIndex] = temp;
+    renderBreathingPhases();
+};
+
+function renderBreathingPhases() {
+    const container = document.getElementById('breathingPhasesList');
+    if (!container) return;
+    
+    if (window.breathingPhasesTemp.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:10px;">Click "Add Phase" to start building your pattern</p>';
+        return;
+    }
+    
+    container.innerHTML = window.breathingPhasesTemp.map((phase, index) => `
+        <div class="component-item" style="margin-bottom:10px; padding:12px; background:var(--surface-elevated); border-radius:8px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <span style="color:var(--gold-primary); font-weight:600;">#${index + 1}</span>
+                <select class="input" style="flex:1; max-width:120px;" onchange="updateBreathingPhase(${index}, 'type', this.value)">
+                    <option value="inhale" ${phase.type === 'inhale' ? 'selected' : ''}>Inhale</option>
+                    <option value="hold" ${phase.type === 'hold' ? 'selected' : ''}>Hold</option>
+                    <option value="exhale" ${phase.type === 'exhale' ? 'selected' : ''}>Exhale</option>
+                </select>
+                <input type="number" class="input" style="width:70px;" value="${phase.duration}" min="1" placeholder="sec" onchange="updateBreathingPhase(${index}, 'duration', this.value)">
+                <span style="color:var(--text-muted);">sec</span>
+                <div style="display:flex; gap:4px; margin-left:auto;">
+                    <button class="btn-sm btn-outline" onclick="movePhase(${index}, -1)" ${index === 0 ? 'disabled' : ''}>↑</button>
+                    <button class="btn-sm btn-outline" onclick="movePhase(${index}, 1)" ${index === window.breathingPhasesTemp.length - 1 ? 'disabled' : ''}>↓</button>
+                    <button class="btn-sm btn-danger" onclick="removeBreathingPhase(${index})">×</button>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <input type="text" class="input" placeholder="Custom label (e.g., Inhale Left)" value="${phase.label || ''}" onchange="updateBreathingPhase(${index}, 'label', this.value)">
+                <input type="text" class="input" placeholder="Instruction (optional)" value="${phase.instruction || ''}" onchange="updateBreathingPhase(${index}, 'instruction', this.value)">
+            </div>
+        </div>
+    `).join('');
+}
+
 window.saveBreathingPattern = () => {
     const name = document.getElementById('breathPatternName').value.trim();
     if (!name) return showNotification('Please enter a pattern name', 'error');
     
-    const inhale = parseInt(document.getElementById('breathInhale').value) || 0;
-    const hold1 = parseInt(document.getElementById('breathHold1').value) || 0;
-    const exhale = parseInt(document.getElementById('breathExhale').value) || 0;
-    const hold2 = parseInt(document.getElementById('breathHold2').value) || 0;
+    if (window.breathingPhasesTemp.length === 0) {
+        return showNotification('Please add at least one phase', 'error');
+    }
     
-    const instructInhale = document.getElementById('breathInstructInhale').value.trim();
-    const instructHold1 = document.getElementById('breathInstructHold1').value.trim();
-    const instructExhale = document.getElementById('breathInstructExhale').value.trim();
-    const instructHold2 = document.getElementById('breathInstructHold2').value.trim();
+    const description = document.getElementById('breathPatternDesc')?.value.trim() || 
+        `Custom: ${window.breathingPhasesTemp.map(p => p.duration).join('-')}`;
     
     const pattern = {
         name,
-        value: `custom-${Date.now()}`,
-        timing: { inhale, hold1, exhale, hold2 },
-        description: `Custom pattern: ${inhale}-${hold1}-${exhale}-${hold2}`,
-        instructions: {
-            inhale: instructInhale,
-            hold1: instructHold1,
-            exhale: instructExhale,
-            hold2: instructHold2
-        }
+        value: window.editingBreathPatternIndex !== null && window.editingBreathPatternIndex !== undefined 
+            ? AppState.breathingPatterns[window.editingBreathPatternIndex].value 
+            : `custom-${Date.now()}`,
+        phases: [...window.breathingPhasesTemp],
+        description
     };
     
     if (window.editingBreathPatternIndex !== undefined && window.editingBreathPatternIndex !== null) {
@@ -2372,16 +2527,13 @@ window.saveBreathingPattern = () => {
 window.editBreathingPattern = (index) => {
     const pattern = AppState.breathingPatterns[index];
     document.getElementById('breathPatternName').value = pattern.name;
-    document.getElementById('breathInhale').value = pattern.timing.inhale;
-    document.getElementById('breathHold1').value = pattern.timing.hold1;
-    document.getElementById('breathExhale').value = pattern.timing.exhale;
-    document.getElementById('breathHold2').value = pattern.timing.hold2;
+    if (document.getElementById('breathPatternDesc')) {
+        document.getElementById('breathPatternDesc').value = pattern.description || '';
+    }
     
-    const instr = pattern.instructions || {};
-    document.getElementById('breathInstructInhale').value = instr.inhale || '';
-    document.getElementById('breathInstructHold1').value = instr.hold1 || '';
-    document.getElementById('breathInstructExhale').value = instr.exhale || '';
-    document.getElementById('breathInstructHold2').value = instr.hold2 || '';
+    // Convert to phases format if needed
+    window.breathingPhasesTemp = convertToPhases(pattern);
+    renderBreathingPhases();
     
     window.editingBreathPatternIndex = index;
 };
@@ -2398,14 +2550,11 @@ window.deleteBreathingPattern = (index) => {
 
 function clearBreathingForm() {
     document.getElementById('breathPatternName').value = '';
-    document.getElementById('breathInhale').value = '4';
-    document.getElementById('breathHold1').value = '4';
-    document.getElementById('breathExhale').value = '4';
-    document.getElementById('breathHold2').value = '4';
-    document.getElementById('breathInstructInhale').value = '';
-    document.getElementById('breathInstructHold1').value = '';
-    document.getElementById('breathInstructExhale').value = '';
-    document.getElementById('breathInstructHold2').value = '';
+    if (document.getElementById('breathPatternDesc')) {
+        document.getElementById('breathPatternDesc').value = '';
+    }
+    window.breathingPhasesTemp = [];
+    renderBreathingPhases();
     window.editingBreathPatternIndex = null;
 }
 

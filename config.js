@@ -28,10 +28,32 @@
  *      - instructions: string (text to read/affirm)
  *      - image: string (optional)
  * 
- * Breathing Patterns:
+ * Breathing Patterns (Two formats supported):
+ * 
+ * FORMAT 1 - Simple (legacy, still works):
+ *    - timing: { inhale: 4, hold1: 4, exhale: 4, hold2: 4 }
+ *    - instructions: { inhale: "...", hold1: "...", exhale: "...", hold2: "..." }
+ * 
+ * FORMAT 2 - Flexible Phases (NEW - supports any sequence):
+ *    - phases: Array of phase objects, executed in order:
+ *      - type: "inhale" | "hold" | "exhale" (determines animation/color)
+ *      - duration: number (seconds)
+ *      - label: string (optional - custom text shown during phase, e.g., "Inhale Left")
+ *      - instruction: string (optional - detailed instruction shown below)
+ * 
+ *    Example with multiple inhales/holds:
+ *    phases: [
+ *      { type: "inhale", duration: 4, label: "Inhale Left", instruction: "Close right nostril" },
+ *      { type: "hold", duration: 4 },
+ *      { type: "exhale", duration: 4, label: "Exhale Right" },
+ *      { type: "inhale", duration: 4, label: "Inhale Right", instruction: "Close left nostril" },
+ *      { type: "hold", duration: 4 },
+ *      { type: "exhale", duration: 4, label: "Exhale Left" }
+ *    ]
+ * 
+ * Common properties for both formats:
  *    - name: Display name for the pattern
  *    - value: Unique identifier
- *    - timing: Object with inhale, hold1, exhale, hold2 in seconds
  *    - description: Brief explanation of the pattern
  * 
  * Image Presets:
@@ -105,123 +127,139 @@ const CONFIG = {
         {
             name: "Complete Yogic Breath",
             value: "yogic-complete",
-            timing: { inhale: 8, hold1: 8, exhale: 8, hold2: 0 },
             description: "Foundation breath - fill lungs from bottom to top",
-            instructions: {
-                inhale: "Fill lower belly, then mid-chest, then upper lungs",
-                hold1: "Hold comfortably - never strain",
-                exhale: "Contract lower abs, then mid-section, then upper lungs"
-            }
+            phases: [
+                { type: "inhale", duration: 8, label: "Inhale", instruction: "Fill lower belly, then mid-chest, then upper lungs" },
+                { type: "hold", duration: 8, label: "Hold", instruction: "Hold comfortably - never strain" },
+                { type: "exhale", duration: 8, label: "Exhale", instruction: "Contract lower abs, then mid-section, then upper lungs" }
+            ]
         },
         {
-            name: "Alternate Nostril (Anuloma Viloma)",
-            value: "alternate-nostril",
-            timing: { inhale: 4, hold1: 6, exhale: 4, hold2: 0 },
-            description: "Balances Ida & Pingala, purifies nadis for Kundalini. Each round: Left in → Right out → Right in → Left out",
-            instructions: {
-                inhale: "Close RIGHT nostril with thumb, inhale LEFT. Next breath: close LEFT, inhale RIGHT",
-                hold1: "Hold - focus on pineal gland or chosen chakra",
-                exhale: "Switch: close LEFT nostril, exhale RIGHT. Next breath: close RIGHT, exhale LEFT"
-            }
+            // EXAMPLE: Flexible phases format - full alternate nostril cycle in one pattern
+            name: "Full Alternate Nostril Cycle",
+            value: "full-alternate-nostril",
+            description: "Complete Anuloma Viloma cycle - Balances Ida & Pingala nadis",
+            phases: [
+                { type: "inhale", duration: 4, label: "Inhale Left", instruction: "Thumb on RIGHT nostril (close right), inhale through LEFT for 4 count" },
+                { type: "hold", duration: 6, label: "Hold", instruction: "Both nostrils closed - hold for 6 count" },
+                { type: "exhale", duration: 4, label: "Exhale Right", instruction: "Thumb on LEFT nostril (close left), exhale through RIGHT for 4 count" },
+                { type: "inhale", duration: 4, label: "Inhale Right", instruction: "Keep LEFT closed, inhale through RIGHT for 4 count" },
+                { type: "hold", duration: 6, label: "Hold", instruction: "Both nostrils closed - hold for 6 count" },
+                { type: "exhale", duration: 4, label: "Exhale Left", instruction: "Thumb on RIGHT nostril (close right), exhale through LEFT for 4 count" }
+            ]
         },
         {
             name: "Breath of Fire (Kapalabhati)",
             value: "breath-of-fire",
-            timing: { inhale: 1, hold1: 0, exhale: 1, hold2: 0 },
-            description: "Foundation of Kundalini Yoga - do 20+ rapid pumps per round",
-            instructions: {
-                inhale: "Air enters PASSIVELY through top of lungs - don't force inhale",
-                exhale: "FORCEFUL pump with lower abs - snap inward. Repeat rapidly 20+ times per round"
-            }
+            description: "Foundation of Kundalini Yoga - 20 rapid pumps, then hold",
+            phases: [
+                { type: "inhale", duration: 30, label: "20 Rapid Breaths", instruction: "Contract abdominal muscles FORCEFULLY - pump stomach in and out, hard and fast but CONTROLLED. Air enters top of lungs by itself. Do 20 rhythmic breaths within these 30 seconds using rapid abdominal contractions." },
+                { type: "exhale", duration: 6, label: "Exhale", instruction: "After 20th breath, exhale completely" },
+                { type: "inhale", duration: 6, label: "Deep Inhale", instruction: "Fill your lungs completely - deep full breath" },
+                { type: "hold", duration: 10, label: "Hold", instruction: "Contract your ANUS, lower chin to chest, hold breath as long as comfortable - DO NOT PUSH YOURSELF!" },
+                { type: "exhale", duration: 6, label: "Slow Exhale", instruction: "Exhale slowly and completely. This completes 1 round." }
+            ]
         },
         {
             name: "Yogic Humming Breath (Brahmari)",
             value: "brahmari",
-            timing: { inhale: 6, hold1: 2, exhale: 12, hold2: 0 },
             description: "Essential for mastering mantras - vibrate, don't speak",
-            instructions: {
-                inhale: "Complete Yogic Breath - fill from bottom to top",
-                hold1: "Brief pause",
-                exhale: "Keep lips closed, HUM the breath out - HMMMMMM"
-            }
+            phases: [
+                { type: "inhale", duration: 10, label: "Inhale", instruction: "Complete Yogic Breath - fill from bottom to top" },
+                { type: "hold", duration: 10, label: "Hold", instruction: "Brief pause" },
+                { type: "exhale", duration: 10, label: "Exhale", instruction: "Keep lips closed, HUM the breath out - HMMMMMM" }
+            ]
+        },
+        {
+            name: "Sithali (Curled Tongue Cooling)",
+            value: "sithali",
+            description: "Cooling breath - inhale through curled tongue",
+            phases: [
+                { type: "inhale", duration: 6, label: "Inhale", instruction: "Curl your tongue lengthwise. Inhale through your curled tongue, drawing cool air in." },
+                { type: "hold", duration: 8, label: "Hold", instruction: "Close mouth, hold for 5-10 seconds (whatever is comfortable)" },
+                { type: "exhale", duration: 6, label: "Exhale", instruction: "Exhale slowly through your nose" }
+            ]
+        },
+        {
+            name: "Reverse Sithali (from Azazel)",
+            value: "reverse-sithali",
+            description: "Reversed cooling breath - exhale through curled tongue",
+            phases: [
+                { type: "inhale", duration: 6, label: "Inhale", instruction: "Inhale through your nose" },
+                { type: "hold", duration: 8, label: "Hold", instruction: "With mouth closed, hold for 5-10 seconds (optional - whatever is comfortable)" },
+                { type: "exhale", duration: 6, label: "Exhale", instruction: "Curl your tongue. Exhale through your mouth with tongue curled." }
+            ]
         },
         {
             name: "Serpent Hissing Breath (Sitkari)",
             value: "sitkari",
-            timing: { inhale: 6, hold1: 6, exhale: 6, hold2: 0 },
             description: "Tongue on roof of mouth, hissing inhale",
-            instructions: {
-                inhale: "Tongue lightly on roof, hiss as you fill lungs in 3 parts",
-                hold1: "Hold comfortably",
-                exhale: "Slow, even exhale through nose"
-            }
+            phases: [
+                { type: "inhale", duration: 8, label: "Hissing Inhale", instruction: "Press tongue lightly against roof of mouth, keep small space open. Inhale making a hissing sound. Fill lower lungs, then middle, then top - smooth and even like Complete Yogic Breath." },
+                { type: "hold", duration: 8, label: "Hold", instruction: "Hold breath as long as comfortable" },
+                { type: "exhale", duration: 6, label: "Exhale", instruction: "Exhale slowly and evenly through your nose" }
+            ]
         },
         {
             name: "Reversed Sitkari (from Azazel)",
             value: "reversed-sitkari",
-            timing: { inhale: 6, hold1: 6, exhale: 6, hold2: 0 },
-            description: "Hissing exhale - relaxed, not forced",
-            instructions: {
-                inhale: "Slow breath in through nose",
-                hold1: "Optional comfortable hold",
-                exhale: "Tongue on roof, relaxed hissing exhale"
-            }
+            description: "Reversed serpent breath - hissing exhale, relaxed and not forced",
+            phases: [
+                { type: "inhale", duration: 6, label: "Inhale", instruction: "Slowly breathe in through your nose" },
+                { type: "hold", duration: 6, label: "Hold", instruction: "Optional - hold for count of 6 or whatever is comfortable" },
+                { type: "exhale", duration: 6, label: "Hissing Exhale", instruction: "Press tongue lightly against roof of mouth with small space open. Exhale making a hissing sound - RELAXED, not forced. Smooth exhale." }
+            ]
         },
         {
             name: "Cat Breath (Ujjayi)",
             value: "ujjayi",
-            timing: { inhale: 4, hold1: 4, exhale: 4, hold2: 0 },
-            description: "Glottis partially closed - faint hissing/snoring sound",
-            instructions: {
-                inhale: "Partially close glottis, inhale through nose with soft hiss",
-                hold1: "Hold breath",
-                exhale: "Exhale through nose, keeping glottis partially closed"
-            }
+            description: "Glottis partially closed - faint hissing/snoring sound, even and controlled",
+            phases: [
+                { type: "inhale", duration: 5, label: "Inhale", instruction: "Partially close your glottis (as with snoring). Inhale through your nose making a faint hissing sound, like light snoring. Should be even and controlled." },
+                { type: "hold", duration: 5, label: "Hold", instruction: "Hold your breath comfortably" },
+                { type: "exhale", duration: 5, label: "Exhale", instruction: "Exhale through your nose, keeping glottis partially closed with faint hissing sound" }
+            ]
         },
         {
             name: "Reversed Cat Breath (from Azazel)",
             value: "reversed-ujjayi",
-            timing: { inhale: 4, hold1: 4, exhale: 4, hold2: 0 },
-            description: "Cat hiss on exhale - useful for energy work",
-            instructions: {
-                inhale: "Breathe in through nose normally",
-                hold1: "Optional hold - never force",
-                exhale: "Exhale through back of throat like a cat's hiss"
-            }
+            description: "Cat hiss on exhale - glottis partially closed. Useful for energy work.",
+            phases: [
+                { type: "inhale", duration: 5, label: "Inhale", instruction: "Breathe in through your nose normally" },
+                { type: "hold", duration: 5, label: "Hold", instruction: "Optional hold - never force. Always be comfortable." },
+                { type: "exhale", duration: 5, label: "Cat Hiss Exhale", instruction: "Exhale through the back of your throat, just like a cat's hiss, keeping glottis partially closed" }
+            ]
         },
         {
             name: "Kumbhaka Lunar Breath - Set 1",
             value: "kumbhaka-1",
-            timing: { inhale: 2, hold1: 4, exhale: 6, hold2: 4 },
-            description: "First set - do X rounds, then MUST do X rounds of Set 2",
-            instructions: {
-                inhale: "Inhale through both nostrils (2 count)",
-                hold1: "Hold at top (4 count)",
-                exhale: "Extended exhale (6 count)",
-                hold2: "Hold at bottom (4 count) - this completes 1 round"
-            }
+            description: "First set - do X rounds (3-6 for beginners), then MUST do same X rounds of Set 2",
+            phases: [
+                { type: "inhale", duration: 2, label: "Inhale", instruction: "Inhale through both nostrils for count of 2" },
+                { type: "hold", duration: 4, label: "Hold", instruction: "Hold for count of 4" },
+                { type: "exhale", duration: 6, label: "Exhale", instruction: "Exhale for count of 6" },
+                { type: "hold", duration: 4, label: "Hold at bottom", instruction: "Hold for count of 4 - this completes 1 round" }
+            ]
         },
         {
             name: "Kumbhaka Lunar Breath - Set 2",
             value: "kumbhaka-2",
-            timing: { inhale: 6, hold1: 6, exhale: 4, hold2: 0 },
-            description: "Second set - MUST match same number of rounds as Set 1",
-            instructions: {
-                inhale: "Extended inhale (6 count)",
-                hold1: "Extended hold (6 count)",
-                exhale: "Shorter exhale (4 count) - no hold. This completes 1 round"
-            }
+            description: "Second set - MUST match EXACT same number of rounds as Set 1. NO HOLD at bottom!",
+            phases: [
+                { type: "inhale", duration: 6, label: "Inhale", instruction: "Inhale for count of 6" },
+                { type: "hold", duration: 6, label: "Hold", instruction: "Hold for count of 6" },
+                { type: "exhale", duration: 4, label: "Exhale", instruction: "Exhale for count of 4 - Do NOT hold at bottom. This completes 1 round." }
+            ]
         },
         {
             name: "666 Breath of Lucifer's Grail",
             value: "666-grail",
-            timing: { inhale: 6, hold1: 12, exhale: 6, hold2: 0 },
-            description: "Advanced - connects base to solar (666) to 6th chakra for Magnum Opus",
-            instructions: {
-                inhale: "Visualize energy rising from BASE chakra up to SOLAR (666) chakra",
-                hold1: "Hold as long as comfortable - focus intensely on PINEAL/6th chakra. Feel the pressure build",
-                exhale: "Release and relax. This completes 1 round"
-            }
+            description: "Advanced - connects male/female aspects of grail. Links pineal/6th chakra to 666 solar chakra for Magnum Opus",
+            phases: [
+                { type: "inhale", duration: 6, label: "Inhale", instruction: "Breathe in through your BASE chakra to your SOLAR [666] chakra. Visualize energy rising." },
+                { type: "hold", duration: 16, label: "Hold & Focus", instruction: "Hold as long as comfortable and focus intensely on your 6th chakra/PINEAL GLAND. You should feel a bit of pressure on the 6th chakra. This connects the pineal (female) to solar 666 (male)." },
+                { type: "exhale", duration: 6, label: "Exhale", instruction: "Exhale and relax. Repeat for as many rounds as comfortable. This builds the energy link needed for Magnum Opus." }
+            ]
         }
     ],
 

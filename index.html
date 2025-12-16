@@ -853,43 +853,22 @@
                     <h3 style="margin-bottom:10px;">Create New Pattern</h3>
                     <div class="form-group">
                         <label>Pattern Name</label>
-                        <input type="text" id="breathPatternName" placeholder="e.g., Custom 5-5-5-5" class="input">
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Inhale (seconds)</label>
-                            <input type="number" id="breathInhale" class="input" value="4" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Hold 1 (seconds)</label>
-                            <input type="number" id="breathHold1" class="input" value="4" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Exhale (seconds)</label>
-                            <input type="number" id="breathExhale" class="input" value="4" min="0">
-                        </div>
-                        <div class="form-group">
-                            <label>Hold 2 (seconds)</label>
-                            <input type="number" id="breathHold2" class="input" value="4" min="0">
-                        </div>
+                        <input type="text" id="breathPatternName" placeholder="e.g., Custom Alternate Nostril" class="input">
                     </div>
                     <div class="form-group">
-                        <label>Instructions - Inhale</label>
-                        <input type="text" id="breathInstructInhale" class="input" placeholder="e.g., Breathe in slowly through your nose">
+                        <label>Description (optional)</label>
+                        <input type="text" id="breathPatternDesc" placeholder="e.g., Advanced 6-phase pattern" class="input">
                     </div>
-                    <div class="form-group">
-                        <label>Instructions - Hold 1</label>
-                        <input type="text" id="breathInstructHold1" class="input" placeholder="e.g., Hold the breath gently">
+                    
+                    <div style="margin:15px 0;">
+                        <label style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>Breathing Phases</span>
+                            <button class="btn btn-sm btn-outline" onclick="addBreathingPhase()">+ Add Phase</button>
+                        </label>
+                        <div id="breathingPhasesList" style="margin-top:10px;"></div>
                     </div>
-                    <div class="form-group">
-                        <label>Instructions - Exhale</label>
-                        <input type="text" id="breathInstructExhale" class="input" placeholder="e.g., Release slowly">
-                    </div>
-                    <div class="form-group">
-                        <label>Instructions - Hold 2</label>
-                        <input type="text" id="breathInstructHold2" class="input" placeholder="e.g., Rest in the emptiness">
-                    </div>
-                    <button class="btn btn-gold" onclick="saveBreathingPattern()">Add Pattern</button>
+                    
+                    <button class="btn btn-gold" onclick="saveBreathingPattern()">Save Pattern</button>
                 </div>
                 <div style="border-top:1px solid var(--border-color); padding-top:20px;">
                     <h3 style="margin-bottom:15px;">Your Custom Patterns</h3>
