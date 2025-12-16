@@ -250,10 +250,9 @@
             <header class="page-header">
                 <h1 class="page-title">Flows</h1>
                 <div class="header-actions">
-                    <button class="btn btn-outline" onclick="document.getElementById('importFlowFile').click()">
+                    <button id="importFlowBtn" class="btn btn-outline" onclick="window.triggerFlowImport()">
                         <span>Import Flow</span>
                     </button>
-                    <input type="file" id="importFlowFile" accept=".json" style="display:none" onchange="importFlow(event)">
                     <button class="btn btn-gold" onclick="openFlowBuilder()">
                         <span>+ Create Flow</span>
                     </button>
@@ -323,6 +322,25 @@
                     </button>
                 </div>
             </header>
+            
+            <!-- Task Filters -->
+            <div class="task-filters" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <input type="text" id="taskSearch" class="input" placeholder="Search tasks..." style="flex: 1; min-width: 200px;" oninput="renderTasks()">
+                <select id="taskCategoryFilter" class="input" style="width: 150px;" onchange="renderTasks()">
+                    <option value="">All Categories</option>
+                    <option value="Work">Work</option>
+                    <option value="Personal">Personal</option>
+                    <option value="Health">Health</option>
+                    <option value="Study">Study</option>
+                    <option value="Magick">Magick</option>
+                </select>
+                <select id="taskPriorityFilter" class="input" style="width: 130px;" onchange="renderTasks()">
+                    <option value="">All Priorities</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
             
             <div class="tasks-view">
                 <div class="tasks-column">
@@ -461,6 +479,7 @@
             <header class="page-header">
                 <h1 class="page-title">Calendar</h1>
                 <div class="header-actions">
+                    <button class="btn btn-outline" onclick="openExportPDFModal('calendar')" title="Export to PDF">📄 Export</button>
                     <button class="btn btn-outline" id="calendarPrev">←</button>
                     <span class="calendar-month" id="calendarMonth">December 2025</span>
                     <button class="btn btn-outline" id="calendarNext">→</button>
@@ -516,11 +535,26 @@
             <header class="page-header">
                 <h1 class="page-title">Journal</h1>
                 <div class="header-actions">
+                    <button class="btn btn-outline" onclick="openExportPDFModal('journal')" title="Export to PDF">📄 Export</button>
                     <button class="btn btn-gold" onclick="openJournalEntry()">
                         <span>+ New Entry</span>
                     </button>
                 </div>
             </header>
+            
+            <!-- Journal Filters -->
+            <div class="journal-filters" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
+                <input type="text" id="journalSearch" class="input" placeholder="Search entries..." style="flex: 1; min-width: 200px;" oninput="filterJournal()">
+                <select id="journalMoodFilter" class="input" style="width: 150px;" onchange="filterJournal()">
+                    <option value="">All Moods</option>
+                    <option value="great">😊 Great</option>
+                    <option value="good">🙂 Good</option>
+                    <option value="neutral">😐 Neutral</option>
+                    <option value="low">😔 Low</option>
+                    <option value="bad">😢 Bad</option>
+                </select>
+                <input type="date" id="journalDateFilter" class="input" style="width: 160px;" onchange="filterJournal()">
+            </div>
             
             <div class="journal-container">
                 <div class="journal-list" id="journalList">
@@ -588,10 +622,6 @@
                     </div>
                 </div>
             </div>
-
-            <div class="stats-charts" style="display:none;">
-                <!-- Charts removed per user request -->
-            </div>
         </section>
 
         <!-- Settings Page -->
@@ -629,15 +659,14 @@
                             <span class="setting-title">Import Data</span>
                             <span class="setting-desc">Import data from a backup file</span>
                         </div>
-                        <button class="btn btn-outline" onclick="document.getElementById('importFile').click()">Import</button>
-                        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+                        <button class="btn btn-outline" onclick="triggerSelectiveImport()">Import</button>
                     </div>
                     <div class="settings-row">
                         <div class="setting-info">
-                            <span class="setting-title">Export Single Flow</span>
-                            <span class="setting-desc">Share a specific flow with others</span>
+                            <span class="setting-title">Export Flows</span>
+                            <span class="setting-desc">Select and export one or more flows</span>
                         </div>
-                        <button class="btn btn-outline" onclick="openExportFlowModal()">Select Flow</button>
+                        <button class="btn btn-outline" onclick="openExportFlowModal()">Select Flows</button>
                     </div>
                     <div class="settings-row danger">
                         <div class="setting-info">
@@ -802,7 +831,7 @@
         <div class="modal-overlay" onclick="closeModal('workingBuilderModal')"></div>
         <div class="modal-content large">
             <div class="modal-header">
-                <h2>Create Magick Working</h2>
+                <h2 id="workingModalTitle">Create Magick Working</h2>
                 <button class="modal-close" onclick="closeModal('workingBuilderModal')">×</button>
             </div>
             <div class="modal-body">
@@ -829,13 +858,20 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>Sigil/Image URL (optional)</label>
-                    <input type="text" id="workingImage" placeholder="https://..." class="input">
+                    <label>Sigil/Image</label>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <input type="file" id="workingImageFile" accept="image/*" class="input" style="flex:1;" onchange="handleWorkingImageUpload(this)">
+                    </div>
+                    <div id="workingImagePreview" style="display:none; margin-top:10px;">
+                        <img id="workingImagePreviewImg" style="max-width:150px; max-height:100px; border-radius:8px; border:1px solid var(--gold-dim);">
+                        <button class="btn-sm btn-outline" onclick="clearWorkingImage()" style="margin-left:10px;">Clear</button>
+                    </div>
+                    <input type="hidden" id="workingImage" value="">
                 </div>
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('workingBuilderModal')">Cancel</button>
-                <button class="btn btn-gold" onclick="saveWorking()">Begin Working</button>
+                <button class="btn btn-gold" id="workingSaveBtn" onclick="saveWorking()">Begin Working</button>
             </div>
         </div>
     </div>
@@ -988,6 +1024,7 @@
                 <button class="modal-close" onclick="closeModal('journalModal')">×</button>
             </div>
             <div class="modal-body">
+                <input type="hidden" id="journalEditId" value="">
                 <div class="form-group">
                     <label>Title</label>
                     <input type="text" id="journalTitle" placeholder="Entry title..." class="input">
@@ -1021,7 +1058,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('journalModal')">Cancel</button>
-                <button class="btn btn-gold" onclick="saveJournalEntry()">Save Entry</button>
+                <button class="btn btn-gold" id="journalSaveBtn" onclick="saveJournalEntry()">Save Entry</button>
             </div>
         </div>
     </div>

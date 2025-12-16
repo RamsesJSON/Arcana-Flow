@@ -89,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
     checkStreak();
     autoResetFlowCompletions();
     renderBadges();
-    // renderHeatmap(); // Removed
     
     // Keyboard shortcuts
     initKeyboardShortcuts();
@@ -229,6 +228,20 @@ window.navigateTo = (pageId) => {
 
 window.openModal = (id) => document.getElementById(id).classList.add('active');
 window.closeModal = (id) => document.getElementById(id).classList.remove('active');
+
+// Styled confirm modal to replace browser confirm()
+let confirmCallback = null;
+window.showConfirmModal = (title, message, onConfirm) => {
+    document.getElementById('confirmTitle').textContent = title;
+    document.getElementById('confirmMessage').textContent = message;
+    confirmCallback = onConfirm;
+    document.getElementById('confirmAction').onclick = () => {
+        window.closeModal('confirmModal');
+        if (confirmCallback) confirmCallback();
+        confirmCallback = null;
+    };
+    window.openModal('confirmModal');
+};
 
 // --- STATE FUNCTIONS ---
 function loadState() {
@@ -884,9 +897,42 @@ function renderFlowBuilderSteps() {
     currentFlowBuilderSteps.forEach((step, index) => {
         const el = document.createElement('div');
         el.className = 'component-item';
+        el.draggable = true;
+        el.dataset.stepIndex = index;
         el.style.flexDirection = 'column';
         el.style.alignItems = 'stretch';
         el.style.gap = '10px';
+        
+        // Drag events for step reordering
+        el.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', index);
+            el.classList.add('dragging');
+        });
+        
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+        });
+        
+        el.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            el.classList.add('drag-over');
+        });
+        
+        el.addEventListener('dragleave', () => {
+            el.classList.remove('drag-over');
+        });
+        
+        el.addEventListener('drop', (e) => {
+            e.preventDefault();
+            el.classList.remove('drag-over');
+            const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+            const toIndex = index;
+            if (fromIndex !== toIndex) {
+                const [moved] = currentFlowBuilderSteps.splice(fromIndex, 1);
+                currentFlowBuilderSteps.splice(toIndex, 0, moved);
+                renderFlowBuilderSteps();
+            }
+        });
         
         let valueInput = '';
         if (step.type === 'breathing') {
@@ -920,9 +966,16 @@ function renderFlowBuilderSteps() {
         }
 
         el.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:5px;">
-                <span style="font-weight:bold; color:var(--gold-primary)">${index + 1}. ${step.type.toUpperCase()}</span>
-                <button class="btn-danger btn-sm" onclick="removeFlowStep(${index})">×</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:5px; cursor:grab;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="color:var(--text-muted); cursor:grab;" title="Drag to reorder">⋮⋮</span>
+                    <span style="font-weight:bold; color:var(--gold-primary)">${index + 1}. ${step.type.toUpperCase()}</span>
+                </div>
+                <div style="display:flex; gap:5px;">
+                    ${index > 0 ? `<button class="btn-outline btn-sm" onclick="moveStepUp(${index})" title="Move up">↑</button>` : ''}
+                    ${index < currentFlowBuilderSteps.length - 1 ? `<button class="btn-outline btn-sm" onclick="moveStepDown(${index})" title="Move down">↓</button>` : ''}
+                    <button class="btn-danger btn-sm" onclick="removeFlowStep(${index})" title="Remove">×</button>
+                </div>
             </div>
             
             <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
@@ -978,9 +1031,8 @@ window.handleStepImageUpload = (index, input) => {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            // Size check removed as per user request
             currentFlowBuilderSteps[index].image = e.target.result;
-            renderFlowBuilderSteps(); // Re-render to show "Image Loaded"
+            renderFlowBuilderSteps();
         };
         reader.readAsDataURL(input.files[0]);
     }
@@ -1007,6 +1059,22 @@ window.updateStepField = (index, field, val) => {
 
 window.removeFlowStep = (index) => {
     currentFlowBuilderSteps.splice(index, 1);
+    renderFlowBuilderSteps();
+};
+
+window.moveStepUp = (index) => {
+    if (index <= 0) return;
+    const temp = currentFlowBuilderSteps[index];
+    currentFlowBuilderSteps[index] = currentFlowBuilderSteps[index - 1];
+    currentFlowBuilderSteps[index - 1] = temp;
+    renderFlowBuilderSteps();
+};
+
+window.moveStepDown = (index) => {
+    if (index >= currentFlowBuilderSteps.length - 1) return;
+    const temp = currentFlowBuilderSteps[index];
+    currentFlowBuilderSteps[index] = currentFlowBuilderSteps[index + 1];
+    currentFlowBuilderSteps[index + 1] = temp;
     renderFlowBuilderSteps();
 };
 
@@ -1063,12 +1131,30 @@ window.saveFlow = () => {
 };
 
 window.deleteFlow = (id) => {
-    if (confirm('Are you sure you want to delete this flow?')) {
+    showConfirmModal('Delete Flow', 'Are you sure you want to delete this flow?', () => {
         AppState.flows = AppState.flows.filter(f => f.id !== id);
         saveState();
         renderFlows();
         showNotification('Flow deleted', 'normal');
-    }
+    });
+};
+
+window.duplicateFlow = (id) => {
+    const flow = AppState.flows.find(f => f.id === id);
+    if (!flow) return;
+    
+    const newFlow = {
+        ...JSON.parse(JSON.stringify(flow)),
+        id: Date.now(),
+        title: flow.title + ' (Copy)',
+        created: new Date().toISOString(),
+        completedDates: []
+    };
+    
+    AppState.flows.push(newFlow);
+    saveState();
+    renderFlows();
+    showNotification(`Flow duplicated: "${newFlow.title}"`, 'gold');
 };
 
 window.toggleFlowDone = (id, event) => {
@@ -1131,8 +1217,9 @@ function renderFlows() {
             <div class="drag-handle">⋮⋮</div>
             <div class="flow-image" style="background-image: url('${flow.image || ''}')">
                 <div style="position:absolute; top:10px; right:10px; z-index:10; display:flex; gap:5px;">
-                    <button class="btn-sm btn-gold" onclick="event.stopPropagation(); editFlow(${flow.id})">✎</button>
-                    <button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteFlow(${flow.id})">×</button>
+                    <button class="btn-sm btn-outline" onclick="event.stopPropagation(); duplicateFlow(${flow.id})" title="Duplicate">⎘</button>
+                    <button class="btn-sm btn-gold" onclick="event.stopPropagation(); editFlow(${flow.id})" title="Edit">✎</button>
+                    <button class="btn-sm btn-danger" onclick="event.stopPropagation(); deleteFlow(${flow.id})" title="Delete">×</button>
                 </div>
                 ${isScheduled ? `
                 <div style="position:absolute; top:10px; left:10px; z-index:10;">
@@ -1352,11 +1439,13 @@ function renderRunnerStep() {
         }</p>
     `;
     
-    // Controls
+    // Controls with Previous Step button
+    const showPrevious = runnerState.stepIndex > 0;
     controls.innerHTML = `
+        ${showPrevious ? '<button class="btn btn-outline" onclick="previousStep()">← Previous</button>' : ''}
         ${step.type !== 'reps' ? '<button class="btn btn-outline" onclick="toggleRunnerPause()" id="runnerPauseBtn">Pause</button>' : ''}
         <button class="btn btn-outline" onclick="skipRunnerStep()">Skip</button>
-        <button class="btn btn-gold" onclick="nextRunnerStep()">Next Step</button>
+        <button class="btn btn-gold" onclick="nextRunnerStep()">Next Step →</button>
     `;
     
     // Start Timer if needed
@@ -1523,15 +1612,57 @@ window.nextRunnerStep = () => {
 };
 
 window.exitFlowRunner = () => {
-    if (confirm("Exit current flow? Progress will be lost.")) {
+    showConfirmModal('Exit Flow', 'Exit current flow? Progress will be lost.', () => {
         clearInterval(runnerState.timer);
         document.getElementById('flowRunner').classList.remove('active');
+    });
+};
+
+window.previousStep = () => {
+    if (runnerState.stepIndex > 0) {
+        clearInterval(runnerState.timer);
+        runnerState.stepIndex--;
+        renderRunnerStep();
     }
 };
+
+function showCelebration() {
+    // Create celebration overlay
+    const celebration = document.createElement('div');
+    celebration.className = 'celebration-overlay';
+    celebration.innerHTML = `
+        <div class="celebration-content">
+            <div class="celebration-icon">🎉</div>
+            <h2>Flow Complete!</h2>
+            <p>Great work on finishing your flow</p>
+            <div class="celebration-confetti"></div>
+        </div>
+    `;
+    document.body.appendChild(celebration);
+    
+    // Create confetti particles
+    for (let i = 0; i < 50; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti-particle';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.animationDelay = Math.random() * 2 + 's';
+        confetti.style.backgroundColor = ['#d4af37', '#ffd700', '#ffec8b', '#daa520', '#fff8dc'][Math.floor(Math.random() * 5)];
+        celebration.querySelector('.celebration-confetti').appendChild(confetti);
+    }
+    
+    // Remove after animation
+    setTimeout(() => {
+        celebration.remove();
+    }, 3000);
+}
 
 function finishFlow() {
     clearInterval(runnerState.timer);
     document.getElementById('flowRunner').classList.remove('active');
+    
+    // Show celebration
+    showCelebration();
+    
     addXP(100);
     
     // Update history
@@ -1542,22 +1673,44 @@ function finishFlow() {
     const flowName = AppState.activeFlow ? AppState.activeFlow.name : (runnerState.flow ? runnerState.flow.title : 'Flow');
     logActivity('flow', flowName, 100);
 
-    showNotification("Flow Completed!", "gold");
+    showNotification("Flow Completed! 🎉", "gold");
     saveState();
     checkBadges();
     updateStatsDisplay();
 
-    // Prompt for Journal
+    // Prompt for Journal with styled modal
     setTimeout(() => {
-        if (confirm("Would you like to add a journal entry for this flow?")) {
+        showConfirmModal('Journal Entry', 'Would you like to add a journal entry for this flow?', () => {
             document.getElementById('journalTitle').value = `Flow: ${flowName}`;
             document.getElementById('journalContent').value = `Completed flow session.\n\nReflections:\n`;
             window.openModal('journalModal');
-        }
-    }, 500);
+        });
+    }, 3200);
 }
 
 // --- MAGICK WORKINGS ---
+let currentWorkingImage = null;
+
+window.handleWorkingImageUpload = (input) => {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            currentWorkingImage = e.target.result;
+            document.getElementById('workingImage').value = currentWorkingImage;
+            document.getElementById('workingImagePreviewImg').src = currentWorkingImage;
+            document.getElementById('workingImagePreview').style.display = 'flex';
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+};
+
+window.clearWorkingImage = () => {
+    currentWorkingImage = null;
+    document.getElementById('workingImage').value = '';
+    document.getElementById('workingImageFile').value = '';
+    document.getElementById('workingImagePreview').style.display = 'none';
+};
+
 window.openWorkingBuilder = () => {
     // Reset form for new working
     document.getElementById('workingName').value = '';
@@ -1565,6 +1718,12 @@ window.openWorkingBuilder = () => {
     document.getElementById('workingAffirmation').value = '';
     document.getElementById('workingDuration').value = '40';
     document.getElementById('workingStartDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('workingImage').value = '';
+    document.getElementById('workingImageFile').value = '';
+    document.getElementById('workingImagePreview').style.display = 'none';
+    document.getElementById('workingModalTitle').textContent = 'Create Magick Working';
+    document.getElementById('workingSaveBtn').textContent = 'Begin Working';
+    currentWorkingImage = null;
     window.currentEditingWorkingId = null;
     window.openModal('workingBuilderModal');
 };
@@ -1572,6 +1731,8 @@ window.openWorkingBuilder = () => {
 window.saveWorking = () => {
     const name = document.getElementById('workingName').value;
     if (!name) return showNotification('Name required', 'error');
+    
+    const imageData = document.getElementById('workingImage').value || currentWorkingImage;
     
     if (window.currentEditingWorkingId) {
         // Edit existing working
@@ -1582,6 +1743,7 @@ window.saveWorking = () => {
             w.affirmation = document.getElementById('workingAffirmation').value;
             w.duration = parseInt(document.getElementById('workingDuration').value);
             w.startDate = document.getElementById('workingStartDate').value;
+            w.image = imageData;
             showNotification('Working updated', 'gold');
         }
         window.currentEditingWorkingId = null;
@@ -1595,7 +1757,10 @@ window.saveWorking = () => {
             duration: parseInt(document.getElementById('workingDuration').value),
             startDate: document.getElementById('workingStartDate').value || new Date().toISOString().split('T')[0],
             status: 'active',
-            daysCompleted: 0
+            daysCompleted: 0,
+            image: imageData,
+            completedDays: [], // Track which days were completed
+            sessionNotes: [] // Track notes for each session
         };
         AppState.workings.push(working);
         addXP(50);
@@ -1604,17 +1769,6 @@ window.saveWorking = () => {
     saveState();
     initWorkings();
     window.closeModal('workingBuilderModal');
-};
-
-window.openWorkingBuilder = () => {
-    // Reset form for new working
-    document.getElementById('workingName').value = '';
-    document.getElementById('workingIntention').value = '';
-    document.getElementById('workingAffirmation').value = '';
-    document.getElementById('workingDuration').value = '40';
-    document.getElementById('workingStartDate').value = new Date().toISOString().split('T')[0];
-    window.currentEditingWorkingId = null;
-    window.openModal('workingBuilderModal');
 };
 
 function initWorkings(filterStatus = 'active') {
@@ -1740,12 +1894,13 @@ window.toggleWorkingStatus = (id) => {
 };
 
 window.deleteWorking = (id) => {
-    if(confirm('Delete this working?')) {
+    showConfirmModal('Delete Working', 'Delete this working? All progress will be lost.', () => {
         AppState.workings = AppState.workings.filter(x => x.id !== id);
         saveState();
         const activeTab = document.querySelector('.workings-tabs .tab-btn.active')?.dataset.tab || 'active';
         initWorkings(activeTab);
-    }
+        showNotification('Working deleted', 'normal');
+    });
 };
 
 window.decrementWorkingDay = (id) => {
@@ -1768,6 +1923,18 @@ window.editWorking = (id) => {
     document.getElementById('workingAffirmation').value = w.affirmation || '';
     document.getElementById('workingDuration').value = w.duration;
     document.getElementById('workingStartDate').value = w.startDate;
+    document.getElementById('workingModalTitle').textContent = 'Edit Working';
+    document.getElementById('workingSaveBtn').textContent = 'Save Changes';
+    
+    // Handle image
+    currentWorkingImage = w.image || null;
+    document.getElementById('workingImage').value = currentWorkingImage || '';
+    if (currentWorkingImage) {
+        document.getElementById('workingImagePreviewImg').src = currentWorkingImage;
+        document.getElementById('workingImagePreview').style.display = 'flex';
+    } else {
+        document.getElementById('workingImagePreview').style.display = 'none';
+    }
     
     // Store editing ID for save function
     window.currentEditingWorkingId = id;
@@ -1777,25 +1944,36 @@ window.editWorking = (id) => {
 window.doWorkingDaily = (id) => {
     const w = AppState.workings.find(x => x.id === id);
     if (w) {
+        const today = new Date().toISOString().split('T')[0];
+        
         w.daysCompleted++;
+        
+        // Track completed days
+        if (!w.completedDays) w.completedDays = [];
+        if (!w.completedDays.includes(today)) {
+            w.completedDays.push(today);
+        }
+        
         addXP(20);
         logActivity('working', `Working: ${w.name}`, 20);
         showNotification(`Day ${w.daysCompleted} completed for ${w.name}`, 'gold');
+        
         if (w.daysCompleted >= w.duration) {
             w.status = 'completed';
-            showNotification(`Working ${w.name} Fully Completed!`, 'gold');
+            showCelebration(); // Show celebration for completing working
+            showNotification(`Working ${w.name} Fully Completed! 🎉`, 'gold');
             addXP(500);
         }
         saveState();
         initWorkings();
 
-        // Prompt for Journal
+        // Prompt for Journal with styled modal
         setTimeout(() => {
-            if (confirm("Would you like to add a journal entry for this session?")) {
+            showConfirmModal('Add Session Note', 'Would you like to add a journal entry for this session?', () => {
                 document.getElementById('journalTitle').value = `Working: ${w.name} - Day ${w.daysCompleted}`;
                 document.getElementById('journalContent').value = `Completed day ${w.daysCompleted} of ${w.duration}.\n\nReflections:\n`;
                 window.openModal('journalModal');
-            }
+            });
         }, 500);
     }
 };
@@ -1805,6 +1983,98 @@ let editingTaskId = null;
 
 function initTasks() {
     renderTasks();
+    initTaskDragDrop();
+}
+
+function initTaskDragDrop() {
+    // Setup drag-and-drop for task columns
+    const columns = document.querySelectorAll('.tasks-list');
+    columns.forEach(column => {
+        column.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            try { e.dataTransfer.dropEffect = 'move'; } catch (err) { }
+            column.classList.add('drag-over');
+        });
+
+        column.addEventListener('dragleave', () => {
+            column.classList.remove('drag-over');
+        });
+
+        column.addEventListener('drop', (e) => {
+            e.preventDefault();
+            column.classList.remove('drag-over');
+
+            // Try to read id from dataTransfer, fall back to the dragging element
+            let taskId = parseInt(e.dataTransfer.getData('text/plain'));
+            if (isNaN(taskId)) {
+                const draggingEl = document.querySelector('.task-card.dragging') || e.target.closest('.task-card');
+                if (draggingEl && draggingEl.dataset && draggingEl.dataset.taskId) {
+                    taskId = parseInt(draggingEl.dataset.taskId);
+                }
+            }
+
+            const newStatus = column.dataset.status;
+
+            const task = AppState.tasks.find(t => t.id === taskId);
+            if (task && task.status !== newStatus) {
+                const wasNotDone = task.status !== 'done';
+                task.status = newStatus;
+
+                if (newStatus === 'done' && wasNotDone) {
+                    addXP(15);
+                    logActivity('task', `Completed Task: ${task.name}`, 15);
+                }
+
+                saveState();
+                renderTasks();
+            }
+        });
+    });
+
+    // Also attach handlers to the column container so empty lists accept drops
+    const columnContainers = document.querySelectorAll('.tasks-column');
+    columnContainers.forEach(container => {
+        container.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            try { e.dataTransfer.dropEffect = 'move'; } catch (err) { }
+            const list = container.querySelector('.tasks-list');
+            if (list) list.classList.add('drag-over');
+        });
+
+        container.addEventListener('dragleave', () => {
+            const list = container.querySelector('.tasks-list');
+            if (list) list.classList.remove('drag-over');
+        });
+
+        container.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const list = container.querySelector('.tasks-list');
+            if (list) list.classList.remove('drag-over');
+
+            let taskId = parseInt(e.dataTransfer.getData('text/plain'));
+            if (isNaN(taskId)) {
+                const draggingEl = document.querySelector('.task-card.dragging') || e.target.closest('.task-card');
+                if (draggingEl && draggingEl.dataset && draggingEl.dataset.taskId) {
+                    taskId = parseInt(draggingEl.dataset.taskId);
+                }
+            }
+
+            const newStatus = list ? list.dataset.status : null;
+            const task = AppState.tasks.find(t => t.id === taskId);
+            if (task && newStatus && task.status !== newStatus) {
+                const wasNotDone = task.status !== 'done';
+                task.status = newStatus;
+
+                if (newStatus === 'done' && wasNotDone) {
+                    addXP(15);
+                    logActivity('task', `Completed Task: ${task.name}`, 15);
+                }
+
+                saveState();
+                renderTasks();
+            }
+        });
+    });
 }
 
 window.openTaskModal = () => {
@@ -1812,6 +2082,8 @@ window.openTaskModal = () => {
     document.getElementById('taskName').value = '';
     document.getElementById('taskCategory').value = 'Work';
     document.getElementById('taskPriority').value = 'Medium';
+    document.getElementById('taskDueDate').value = '';
+    document.getElementById('taskModalTitle').textContent = 'Add Task';
     window.openModal('taskModal');
 };
 
@@ -1823,6 +2095,8 @@ window.editTask = (id) => {
     document.getElementById('taskName').value = task.name;
     document.getElementById('taskCategory').value = task.category;
     document.getElementById('taskPriority').value = task.priority;
+    document.getElementById('taskDueDate').value = task.dueDate || '';
+    document.getElementById('taskModalTitle').textContent = 'Edit Task';
     window.openModal('taskModal');
 };
 
@@ -1836,6 +2110,7 @@ window.saveTask = () => {
             task.name = name;
             task.category = document.getElementById('taskCategory').value;
             task.priority = document.getElementById('taskPriority').value;
+            task.dueDate = document.getElementById('taskDueDate').value || null;
             showNotification('Task updated', 'gold');
         }
     } else {
@@ -1844,7 +2119,9 @@ window.saveTask = () => {
             name,
             category: document.getElementById('taskCategory').value,
             priority: document.getElementById('taskPriority').value,
-            status: 'todo'
+            dueDate: document.getElementById('taskDueDate').value || null,
+            status: 'todo',
+            created: new Date().toISOString()
         };
         AppState.tasks.push(task);
         showNotification('Task created', 'gold');
@@ -1864,18 +2141,67 @@ function renderTasks() {
     
     if (!todoList) return;
     
+    // Get filter values
+    const searchQuery = document.getElementById('taskSearch')?.value.toLowerCase() || '';
+    const categoryFilter = document.getElementById('taskCategoryFilter')?.value || '';
+    const priorityFilter = document.getElementById('taskPriorityFilter')?.value || '';
+    
+    // Filter tasks
+    const filteredTasks = AppState.tasks.filter(task => {
+        if (searchQuery && !task.name.toLowerCase().includes(searchQuery)) return false;
+        if (categoryFilter && task.category.toLowerCase() !== categoryFilter.toLowerCase()) return false;
+        if (priorityFilter && task.priority.toLowerCase() !== priorityFilter.toLowerCase()) return false;
+        return true;
+    });
+    
     todoList.innerHTML = '';
     progressList.innerHTML = '';
     doneList.innerHTML = '';
     
     let counts = { todo: 0, progress: 0, done: 0 };
+    const today = new Date().toISOString().split('T')[0];
     
-    AppState.tasks.forEach(task => {
+    // Priority colors
+    const priorityColors = {
+        high: '#ff6b6b',
+        medium: 'var(--gold-primary)',
+        low: '#6bff8e'
+    };
+    
+    filteredTasks.forEach(task => {
         counts[task.status]++;
         const el = document.createElement('div');
         el.className = 'task-card';
+        el.draggable = true;
+        el.dataset.taskId = task.id;
         
         const isDone = task.status === 'done';
+        const isOverdue = task.dueDate && task.dueDate < today && !isDone;
+        
+        if (isOverdue) {
+            el.classList.add('task-overdue');
+        }
+        
+        // Setup drag events
+        el.addEventListener('dragstart', (e) => {
+            // store the task id as a string and allow move
+            try { e.dataTransfer.setData('text/plain', String(task.id)); } catch (err) { }
+            try { e.dataTransfer.effectAllowed = 'move'; } catch (err) { }
+            el.classList.add('dragging');
+        });
+
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+        });
+        
+        // Format due date display
+        let dueDateHtml = '';
+        if (task.dueDate) {
+            const dueDate = new Date(task.dueDate);
+            const dateStr = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            const overdueClass = isOverdue ? 'task-badge-overdue' : '';
+            dueDateHtml = `<span class="task-badge ${overdueClass}">📅 ${dateStr}</span>`;
+        }
         
         el.innerHTML = `
             <div class="task-check ${isDone ? 'checked' : ''}" onclick="toggleTaskDone(${task.id})"></div>
@@ -1883,14 +2209,13 @@ function renderTasks() {
                 <div class="task-title" style="${isDone ? 'text-decoration:line-through; opacity:0.5;' : ''}">${task.name}</div>
                 <div class="task-meta">
                     <span class="task-badge">${task.category}</span>
-                    <span class="task-badge" style="color:var(--gold-primary)">${task.priority}</span>
+                    <span class="task-badge" style="color:${priorityColors[task.priority.toLowerCase()] || 'var(--gold-primary)'}">${task.priority}</span>
+                    ${dueDateHtml}
                 </div>
             </div>
             <div style="display:flex; gap:5px">
-                <button class="btn-sm btn-outline" onclick="editTask(${task.id})">✎</button>
-                ${task.status !== 'todo' && !isDone ? `<button class="btn-sm btn-outline" onclick="moveTask(${task.id}, -1)">←</button>` : ''}
-                ${task.status !== 'done' && task.status !== 'progress' ? `<button class="btn-sm btn-outline" onclick="moveTask(${task.id}, 1)">→</button>` : ''}
-                <button class="btn-sm btn-danger" onclick="deleteTask(${task.id})">×</button>
+                <button class="btn-sm btn-outline" onclick="editTask(${task.id})" title="Edit">✎</button>
+                <button class="btn-sm btn-danger" onclick="deleteTask(${task.id})" title="Delete">×</button>
             </div>
         `;
         
@@ -2539,13 +2864,13 @@ window.editBreathingPattern = (index) => {
 };
 
 window.deleteBreathingPattern = (index) => {
-    if (confirm('Delete this breathing pattern?')) {
+    showConfirmModal('Delete Pattern', 'Delete this breathing pattern?', () => {
         AppState.breathingPatterns.splice(index, 1);
         saveState();
         renderCustomPatterns();
         initBreathing();
         showNotification('Pattern deleted', 'normal');
-    }
+    });
 };
 
 function clearBreathingForm() {
@@ -2580,11 +2905,14 @@ function initJournal() {
     renderJournal();
 }
 
-window.openJournalEntry = () => {
+window.openJournalEntry = (editId = null) => {
     // Clear form
     document.getElementById('journalTitle').value = '';
     document.getElementById('journalContent').value = '';
     document.getElementById('journalTags').value = '';
+    document.getElementById('journalEditId').value = '';
+    document.getElementById('journalModalTitle').textContent = 'New Journal Entry';
+    document.getElementById('journalSaveBtn').textContent = 'Save Entry';
     
     // Populate Related To dropdown
     const relatedSelect = document.getElementById('journalRelated');
@@ -2602,9 +2930,28 @@ window.openJournalEntry = () => {
         });
     }
     
-    // Populate mood selector
+    // Reset mood selector
     const moodOptions = document.querySelectorAll('input[name="journalMood"]');
-    moodOptions.forEach(opt => opt.checked = false);
+    moodOptions.forEach(opt => opt.checked = opt.value === 'neutral');
+    
+    // If editing, populate form
+    if (editId) {
+        const entry = AppState.journal.find(e => e.id === editId);
+        if (entry) {
+            document.getElementById('journalEditId').value = editId;
+            document.getElementById('journalTitle').value = entry.title || '';
+            document.getElementById('journalContent').value = entry.content || '';
+            document.getElementById('journalTags').value = entry.tags || '';
+            document.getElementById('journalModalTitle').textContent = 'Edit Journal Entry';
+            document.getElementById('journalSaveBtn').textContent = 'Update Entry';
+            
+            if (relatedSelect && entry.relatedTo) {
+                relatedSelect.value = entry.relatedTo;
+            }
+            
+            moodOptions.forEach(opt => opt.checked = opt.value === entry.mood);
+        }
+    }
     
     window.openModal('journalModal');
 };
@@ -2613,43 +2960,107 @@ window.saveJournalEntry = () => {
     const title = document.getElementById('journalTitle').value;
     const content = document.getElementById('journalContent').value;
     const relatedTo = document.getElementById('journalRelated')?.value || '';
+    const editId = document.getElementById('journalEditId').value;
     
     if (!content) return;
     
-    const entry = {
-        id: Date.now(),
-        date: new Date().toISOString(),
-        title: title || "Untitled Entry",
-        content,
-        mood: document.querySelector('input[name="journalMood"]:checked')?.value || 'neutral',
-        tags: document.getElementById('journalTags').value,
-        relatedTo: relatedTo // Store the related flow/working
-    };
+    if (editId) {
+        // Update existing entry
+        const idx = AppState.journal.findIndex(e => e.id == editId);
+        if (idx !== -1) {
+            AppState.journal[idx].title = title || "Untitled Entry";
+            AppState.journal[idx].content = content;
+            AppState.journal[idx].mood = document.querySelector('input[name="journalMood"]:checked')?.value || 'neutral';
+            AppState.journal[idx].tags = document.getElementById('journalTags').value;
+            AppState.journal[idx].relatedTo = relatedTo;
+            AppState.journal[idx].edited = new Date().toISOString();
+            showNotification('Journal entry updated', 'gold');
+        }
+    } else {
+        // Create new entry
+        const entry = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            title: title || "Untitled Entry",
+            content,
+            mood: document.querySelector('input[name="journalMood"]:checked')?.value || 'neutral',
+            tags: document.getElementById('journalTags').value,
+            relatedTo: relatedTo
+        };
+        
+        AppState.journal.unshift(entry);
+        addXP(15);
+        logActivity('working', 'Journal Entry', 15);
+        showNotification('Journal entry saved', 'gold');
+    }
     
-    AppState.journal.unshift(entry);
     saveState();
     renderJournal();
     window.closeModal('journalModal');
-    document.getElementById('journalContent').value = '';
-    document.getElementById('journalTitle').value = '';
-    addXP(15);
-    logActivity('working', 'Journal Entry', 15);
+};
+
+window.deleteJournalEntry = (id) => {
+    showConfirmModal('Delete Entry', 'Are you sure you want to delete this journal entry?', () => {
+        AppState.journal = AppState.journal.filter(e => e.id !== id);
+        saveState();
+        renderJournal();
+        showNotification('Journal entry deleted', 'gold');
+    });
+};
+
+window.filterJournal = () => {
+    renderJournal();
 };
 
 function renderJournal() {
     const list = document.getElementById('journalList');
     if (!list) return;
     
+    // Get filter values
+    const searchQuery = document.getElementById('journalSearch')?.value.toLowerCase() || '';
+    const moodFilter = document.getElementById('journalMoodFilter')?.value || '';
+    const dateFilter = document.getElementById('journalDateFilter')?.value || '';
+    
+    // Filter entries
+    let filteredEntries = AppState.journal.filter(entry => {
+        // Search filter
+        if (searchQuery) {
+            const matchesSearch = 
+                (entry.title || '').toLowerCase().includes(searchQuery) ||
+                (entry.content || '').toLowerCase().includes(searchQuery) ||
+                (entry.tags || '').toLowerCase().includes(searchQuery);
+            if (!matchesSearch) return false;
+        }
+        
+        // Mood filter
+        if (moodFilter && entry.mood !== moodFilter) return false;
+        
+        // Date filter
+        if (dateFilter) {
+            const entryDate = new Date(entry.date).toISOString().split('T')[0];
+            if (entryDate !== dateFilter) return false;
+        }
+        
+        return true;
+    });
+    
     list.innerHTML = '';
-    if (AppState.journal.length === 0) {
+    if (filteredEntries.length === 0 && AppState.journal.length === 0) {
         if (document.getElementById('noJournal')) document.getElementById('noJournal').style.display = 'flex';
         return;
     }
     if (document.getElementById('noJournal')) document.getElementById('noJournal').style.display = 'none';
     
-    AppState.journal.forEach(entry => {
+    if (filteredEntries.length === 0) {
+        list.innerHTML = '<div class="empty-state" style="padding: 40px;"><p>No entries match your filters</p></div>';
+        return;
+    }
+    
+    const moodEmojis = { great: '😊', good: '🙂', neutral: '😐', low: '😔', bad: '😢' };
+    
+    filteredEntries.forEach(entry => {
         const el = document.createElement('div');
-        el.className = 'card';
+        el.className = 'card journal-card';
         el.style.marginBottom = '15px';
         
         // Parse relatedTo to display name
@@ -2658,23 +3069,35 @@ function renderJournal() {
             const [type, id] = entry.relatedTo.split('-');
             if (type === 'flow') {
                 const flow = AppState.flows.find(f => f.id == id);
-                if (flow) relatedLabel = `<span style="font-size:0.8rem; color:var(--accent-blue);">🌊 Related: ${flow.title}</span>`;
+                if (flow) relatedLabel = `<span class="journal-tag">🌊 ${flow.title}</span>`;
             } else if (type === 'working') {
                 const working = AppState.workings.find(w => w.id == id);
-                if (working) relatedLabel = `<span style="font-size:0.8rem; color:var(--accent-purple);">✧ Related: ${working.name}</span>`;
+                if (working) relatedLabel = `<span class="journal-tag">✧ ${working.name}</span>`;
             }
         }
         
+        // Parse tags
+        const tagsHtml = entry.tags ? entry.tags.split(',').map(t => t.trim()).filter(t => t).map(t => 
+            `<span class="journal-tag" onclick="document.getElementById('journalSearch').value='${t}'; filterJournal();">#${t}</span>`
+        ).join('') : '';
+        
         el.innerHTML = `
-            <div class="card-header">
-                <h3>${entry.title}</h3>
-                <span style="font-size:0.8rem; color:#888">${new Date(entry.date).toLocaleDateString()}</span>
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h3 style="margin-bottom: 5px;">${entry.title}</h3>
+                    <span style="font-size:0.8rem; color:#888">${new Date(entry.date).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}${entry.edited ? ' (edited)' : ''}</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="btn-sm btn-gold" onclick="openJournalEntry(${entry.id})" title="Edit">✎</button>
+                    <button class="btn-sm btn-danger" onclick="deleteJournalEntry(${entry.id})" title="Delete">×</button>
+                </div>
             </div>
             <div class="card-content">
-                <p>${entry.content}</p>
-                <div style="margin-top:10px; display:flex; gap:15px; flex-wrap:wrap;">
-                    <span style="font-size:0.8rem; color:var(--gold-dim)">Mood: ${entry.mood}</span>
+                <p style="white-space: pre-wrap; line-height: 1.6;">${entry.content}</p>
+                <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap; align-items: center;">
+                    <span class="journal-mood">${moodEmojis[entry.mood] || '😐'} ${entry.mood}</span>
                     ${relatedLabel}
+                    ${tagsHtml}
                 </div>
             </div>
         `;
@@ -2927,11 +3350,12 @@ window.updateMastery = (id) => {
 };
 
 window.deleteMastery = (id) => {
-    if (confirm("Delete this mastery goal? Progress will be lost.")) {
+    showConfirmModal('Delete Mastery Goal', 'Delete this mastery goal? Progress will be lost.', () => {
         AppState.mastery = AppState.mastery.filter(m => m.id !== id);
         saveState();
         renderMastery();
-    }
+        showNotification('Mastery goal deleted', 'normal');
+    });
 };
 
 window.openMasteryLogModal = (id) => {
@@ -3373,12 +3797,13 @@ window.saveScheduledFlow = () => {
 };
 
 window.deleteScheduledItem = (id) => {
-    if (confirm('Remove this scheduled item?')) {
+    showConfirmModal('Remove Scheduled Item', 'Remove this scheduled item?', () => {
         AppState.schedule = AppState.schedule.filter(e => e.id !== id);
         saveState();
         renderCalendar();
         if (window.selectedCalendarDate) selectCalendarDate(window.selectedCalendarDate);
-    }
+        showNotification('Scheduled item removed', 'normal');
+    });
 };
 
 // --- SETTINGS ---
@@ -3495,38 +3920,109 @@ window.importData = (event) => {
     event.target.value = ''; // Reset input
 };
 
+// Flow Import Handler - must be on window for onclick to work
+window.triggerFlowImport = function() {
+    console.log('Import button clicked');
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        console.log('File selected:', e.target.files);
+        const file = e.target.files[0];
+        if (!file) {
+            console.log('No file');
+            return;
+        }
+        
+        console.log('Reading file:', file.name);
+        const reader = new FileReader();
+        
+        reader.onerror = (err) => {
+            console.error('FileReader error:', err);
+            showNotification("Error reading file", "error");
+        };
+        
+        reader.onload = (evt) => {
+            console.log('File content loaded');
+            try {
+                const flow = JSON.parse(evt.target.result);
+                console.log('Parsed flow:', flow);
+                
+                if (flow.title && flow.steps && Array.isArray(flow.steps)) {
+                    flow.id = Date.now();
+                    flow.created = new Date().toISOString();
+                    flow.completedDates = flow.completedDates || [];
+                    
+                    AppState.flows.push(flow);
+                    saveState();
+                    renderFlows();
+                    console.log('Flow imported!');
+                    showNotification(`Flow "${flow.title}" imported successfully`, "gold");
+                } else {
+                    console.log('Invalid format');
+                    showNotification("Invalid flow file format", "error");
+                }
+            } catch (err) {
+                console.error('Parse error:', err);
+                showNotification("Error parsing file: " + err.message, "error");
+            }
+        };
+        
+        reader.readAsText(file);
+    };
+    input.click();
+};
+
 window.importFlow = (event) => {
     const file = event.target.files[0];
-    if (!file) return;
+    if (!file) {
+        console.log('No file selected');
+        return;
+    }
+    
+    console.log('Importing file:', file.name);
     
     const reader = new FileReader();
+    
+    reader.onerror = (err) => {
+        console.error('FileReader error:', err);
+        showNotification("Error reading file", "error");
+    };
+    
     reader.onload = (e) => {
+        console.log('File loaded, parsing JSON...');
         try {
             const flow = JSON.parse(e.target.result);
+            console.log('Parsed flow:', flow);
+            
             // Basic validation
             if (flow.title && flow.steps && Array.isArray(flow.steps)) {
                 // Generate new ID to avoid conflicts
                 flow.id = Date.now();
                 flow.created = new Date().toISOString();
+                flow.completedDates = flow.completedDates || [];
                 
                 AppState.flows.push(flow);
                 saveState();
                 renderFlows();
+                console.log('Flow imported successfully');
                 showNotification(`Flow "${flow.title}" imported successfully`, "gold");
             } else {
+                console.log('Invalid format - title:', flow.title, 'steps:', flow.steps);
                 showNotification("Invalid flow file format", "error");
             }
         } catch (err) {
-            showNotification("Error reading file", "error");
-            console.error(err);
+            showNotification("Error parsing file: " + err.message, "error");
+            console.error('Parse error:', err);
         }
     };
+    
     reader.readAsText(file);
     event.target.value = ''; // Reset input
 };
 
 window.openExportFlowModal = () => {
-    // Create a dynamic modal for flow selection
+    // Create a dynamic modal for multi-flow selection
     const modalId = 'exportFlowModal';
     let modal = document.getElementById(modalId);
     
@@ -3535,14 +4031,25 @@ window.openExportFlowModal = () => {
         modal.id = modalId;
         modal.className = 'modal';
         modal.innerHTML = `
+            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
             <div class="modal-content">
                 <div class="modal-header">
-                    <h2>Export Flow</h2>
+                    <h2>Export Flows</h2>
                     <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
                 </div>
                 <div class="modal-body">
-                    <p>Select a flow to export:</p>
-                    <div id="exportFlowList" class="list-group"></div>
+                    <p style="margin-bottom:15px;">Select flows to export:</p>
+                    <div style="margin-bottom:15px;">
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                            <input type="checkbox" id="exportSelectAll" onchange="toggleAllFlowsExport(this.checked)">
+                            <span style="color:var(--gold-primary);">Select All</span>
+                        </label>
+                    </div>
+                    <div id="exportFlowList" class="list-group" style="max-height:300px; overflow-y:auto;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
+                    <button class="btn btn-gold" onclick="exportSelectedFlows()">Export Selected</button>
                 </div>
             </div>
         `;
@@ -3554,35 +4061,27 @@ window.openExportFlowModal = () => {
         list.innerHTML = '';
         
         if (AppState.flows.length === 0) {
-            list.innerHTML = '<div class="text-muted">No flows available.</div>';
+            list.innerHTML = '<div class="text-muted" style="padding:20px; text-align:center;">No flows available.</div>';
         } else {
-            AppState.flows.forEach(flow => {
+            AppState.flows.forEach((flow, index) => {
                 const item = document.createElement('div');
                 item.className = 'list-item';
-                item.style.display = 'flex';
-                item.style.justifyContent = 'space-between';
-                item.style.alignItems = 'center';
-                item.style.padding = '10px';
-                item.style.borderBottom = '1px solid rgba(255,255,255,0.1)';
+                item.style.cssText = 'display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid rgba(255,255,255,0.1); cursor:pointer;';
                 
                 item.innerHTML = `
-                    <span>${flow.title}</span>
-                    <button class="btn-sm btn-gold">Export</button>
+                    <input type="checkbox" class="flow-export-checkbox" data-flow-id="${flow.id}" id="export-flow-${flow.id}">
+                    <label for="export-flow-${flow.id}" style="flex:1; cursor:pointer; display:flex; justify-content:space-between;">
+                        <span>${flow.title}</span>
+                        <span style="color:var(--text-muted); font-size:0.85rem;">${flow.steps.length} steps</span>
+                    </label>
                 `;
                 
-                item.querySelector('button').onclick = () => {
-                    if (flow.image && !confirm("Note: Flow images are not included in the export file to keep the file size small. Continue?")) {
-                        return;
+                // Click anywhere to toggle
+                item.onclick = (e) => {
+                    if (e.target.tagName !== 'INPUT') {
+                        const checkbox = item.querySelector('input');
+                        checkbox.checked = !checkbox.checked;
                     }
-                    
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(flow));
-                    const downloadAnchorNode = document.createElement('a');
-                    downloadAnchorNode.setAttribute("href", dataStr);
-                    downloadAnchorNode.setAttribute("download", `${flow.title.replace(/\s+/g, '_')}_flow.json`);
-                    document.body.appendChild(downloadAnchorNode);
-                    downloadAnchorNode.click();
-                    downloadAnchorNode.remove();
-                    window.closeModal(modalId);
                 };
                 
                 list.appendChild(item);
@@ -3590,16 +4089,364 @@ window.openExportFlowModal = () => {
         }
     }
     
+    // Reset select all
+    document.getElementById('exportSelectAll').checked = false;
+    
     modal.style.display = 'flex';
-    setTimeout(() => modal.classList.add('active'), 10); // Ensure transition
+    setTimeout(() => modal.classList.add('active'), 10);
+};
+
+window.toggleAllFlowsExport = (checked) => {
+    document.querySelectorAll('.flow-export-checkbox').forEach(cb => cb.checked = checked);
+};
+
+window.exportSelectedFlows = () => {
+    const selectedIds = Array.from(document.querySelectorAll('.flow-export-checkbox:checked'))
+        .map(cb => parseInt(cb.dataset.flowId));
+    
+    if (selectedIds.length === 0) {
+        showNotification('Please select at least one flow', 'error');
+        return;
+    }
+    
+    const selectedFlows = AppState.flows.filter(f => selectedIds.includes(f.id));
+    
+    // Check for images
+    const hasImages = selectedFlows.some(f => f.image || f.steps.some(s => s.image));
+    
+    const doExport = () => {
+        let exportData;
+        let filename;
+        
+        if (selectedFlows.length === 1) {
+            // Single flow export
+            exportData = selectedFlows[0];
+            filename = `${selectedFlows[0].title.replace(/\s+/g, '_')}_flow.json`;
+        } else {
+            // Multiple flows export
+            exportData = {
+                type: 'arcana_flows_export',
+                version: '1.0',
+                exportDate: new Date().toISOString(),
+                flows: selectedFlows
+            };
+            filename = `arcana_flows_${selectedFlows.length}_exported.json`;
+        }
+        
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", filename);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+        
+        window.closeModal('exportFlowModal');
+        showNotification(`${selectedFlows.length} flow(s) exported!`, 'gold');
+    };
+    
+    if (hasImages) {
+        showConfirmModal('Export Notice', 'Flow images are not included in exports to keep file sizes small. Continue?', doExport);
+    } else {
+        doExport();
+    }
+};
+
+// Selective Import
+window.triggerSelectiveImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = JSON.parse(evt.target.result);
+                openSelectiveImportModal(data);
+            } catch (err) {
+                showNotification('Error reading file: ' + err.message, 'error');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+};
+
+function openSelectiveImportModal(data) {
+    const modalId = 'selectiveImportModal';
+    let modal = document.getElementById(modalId);
+    
+    // Detect data type
+    const isSingleFlow = data.title && data.steps && Array.isArray(data.steps);
+    const isMultiFlowExport = data.type === 'arcana_flows_export' && data.flows;
+    const isFullBackup = data.user && (data.flows || data.workings || data.tasks);
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    
+    let contentHtml = '';
+    
+    if (isSingleFlow) {
+        // Single flow import
+        contentHtml = `
+            <p style="margin-bottom:15px;">Import this flow?</p>
+            <div class="card" style="padding:15px; margin-bottom:15px;">
+                <h4 style="color:var(--gold-primary);">${data.title}</h4>
+                <p style="color:var(--text-muted); font-size:0.9rem;">${data.description || 'No description'}</p>
+                <p style="font-size:0.85rem; margin-top:10px;">${data.steps.length} steps</p>
+            </div>
+        `;
+        
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Import Flow</h2>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                </div>
+                <div class="modal-body">${contentHtml}</div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
+                    <button class="btn btn-gold" onclick="importSingleFlow(window.importTempData)">Import</button>
+                </div>
+            </div>
+        `;
+        window.importTempData = data;
+        
+    } else if (isMultiFlowExport) {
+        // Multi-flow export import
+        contentHtml = `
+            <p style="margin-bottom:15px;">Select flows to import (${data.flows.length} available):</p>
+            <div style="margin-bottom:15px;">
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                    <input type="checkbox" id="importSelectAll" onchange="toggleAllFlowsImport(this.checked)" checked>
+                    <span style="color:var(--gold-primary);">Select All</span>
+                </label>
+            </div>
+            <div id="importFlowList" style="max-height:250px; overflow-y:auto;">
+                ${data.flows.map((f, i) => `
+                    <div style="display:flex; align-items:center; gap:12px; padding:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
+                        <input type="checkbox" class="flow-import-checkbox" data-flow-index="${i}" id="import-flow-${i}" checked>
+                        <label for="import-flow-${i}" style="flex:1; cursor:pointer;">
+                            <span>${f.title}</span>
+                            <span style="color:var(--text-muted); font-size:0.85rem; margin-left:10px;">${f.steps.length} steps</span>
+                        </label>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Import Flows</h2>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                </div>
+                <div class="modal-body">${contentHtml}</div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
+                    <button class="btn btn-gold" onclick="importSelectedFlowsFromExport()">Import Selected</button>
+                </div>
+            </div>
+        `;
+        window.importTempData = data;
+        
+    } else if (isFullBackup) {
+        // Full backup - selective import
+        const counts = {
+            flows: data.flows?.length || 0,
+            workings: data.workings?.length || 0,
+            tasks: data.tasks?.length || 0,
+            journal: data.journal?.length || 0,
+            mastery: data.mastery?.length || 0
+        };
+        
+        contentHtml = `
+            <p style="margin-bottom:15px;">This backup contains:</p>
+            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+                ${counts.flows > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="import-flows" checked>
+                    <span>Flows (${counts.flows})</span>
+                </label>` : ''}
+                ${counts.workings > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="import-workings" checked>
+                    <span>Workings (${counts.workings})</span>
+                </label>` : ''}
+                ${counts.tasks > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="import-tasks" checked>
+                    <span>Tasks (${counts.tasks})</span>
+                </label>` : ''}
+                ${counts.journal > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="import-journal" checked>
+                    <span>Journal Entries (${counts.journal})</span>
+                </label>` : ''}
+                ${counts.mastery > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="import-mastery" checked>
+                    <span>Mastery Goals (${counts.mastery})</span>
+                </label>` : ''}
+                <label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
+                    <input type="checkbox" id="import-settings">
+                    <span>Settings & Profile</span>
+                </label>
+            </div>
+            <p style="color:var(--text-muted); font-size:0.85rem;">⚠️ Importing will merge with existing data. Duplicates may be created.</p>
+        `;
+        
+        modal.innerHTML = `
+            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Import Backup</h2>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                </div>
+                <div class="modal-body">${contentHtml}</div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
+                    <button class="btn btn-gold" onclick="importSelectiveBackup()">Import Selected</button>
+                </div>
+            </div>
+        `;
+        window.importTempData = data;
+        
+    } else {
+        showNotification('Unrecognized file format', 'error');
+        return;
+    }
+    
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+}
+
+window.toggleAllFlowsImport = (checked) => {
+    document.querySelectorAll('.flow-import-checkbox').forEach(cb => cb.checked = checked);
+};
+
+window.importSingleFlow = (flow) => {
+    flow.id = Date.now();
+    flow.created = new Date().toISOString();
+    flow.completedDates = [];
+    AppState.flows.push(flow);
+    saveState();
+    renderFlows();
+    window.closeModal('selectiveImportModal');
+    showNotification(`Flow "${flow.title}" imported!`, 'gold');
+};
+
+window.importSelectedFlowsFromExport = () => {
+    const data = window.importTempData;
+    const selectedIndices = Array.from(document.querySelectorAll('.flow-import-checkbox:checked'))
+        .map(cb => parseInt(cb.dataset.flowIndex));
+    
+    if (selectedIndices.length === 0) {
+        showNotification('Please select at least one flow', 'error');
+        return;
+    }
+    
+    let count = 0;
+    selectedIndices.forEach(idx => {
+        const flow = { ...data.flows[idx] };
+        flow.id = Date.now() + count;
+        flow.created = new Date().toISOString();
+        flow.completedDates = [];
+        AppState.flows.push(flow);
+        count++;
+    });
+    
+    saveState();
+    renderFlows();
+    window.closeModal('selectiveImportModal');
+    showNotification(`${count} flow(s) imported!`, 'gold');
+};
+
+window.importSelectiveBackup = () => {
+    const data = window.importTempData;
+    let importedCount = { flows: 0, workings: 0, tasks: 0, journal: 0, mastery: 0 };
+    
+    // Import flows
+    if (document.getElementById('import-flows')?.checked && data.flows) {
+        data.flows.forEach(flow => {
+            flow.id = Date.now() + importedCount.flows;
+            flow.completedDates = flow.completedDates || [];
+            AppState.flows.push(flow);
+            importedCount.flows++;
+        });
+    }
+    
+    // Import workings
+    if (document.getElementById('import-workings')?.checked && data.workings) {
+        data.workings.forEach(w => {
+            w.id = Date.now() + 1000 + importedCount.workings;
+            AppState.workings.push(w);
+            importedCount.workings++;
+        });
+    }
+    
+    // Import tasks
+    if (document.getElementById('import-tasks')?.checked && data.tasks) {
+        data.tasks.forEach(t => {
+            t.id = Date.now() + 2000 + importedCount.tasks;
+            AppState.tasks.push(t);
+            importedCount.tasks++;
+        });
+    }
+    
+    // Import journal
+    if (document.getElementById('import-journal')?.checked && data.journal) {
+        data.journal.forEach(j => {
+            j.id = Date.now() + 3000 + importedCount.journal;
+            AppState.journal.push(j);
+            importedCount.journal++;
+        });
+    }
+    
+    // Import mastery
+    if (document.getElementById('import-mastery')?.checked && data.mastery) {
+        data.mastery.forEach(m => {
+            m.id = Date.now() + 4000 + importedCount.mastery;
+            AppState.mastery.push(m);
+            importedCount.mastery++;
+        });
+    }
+    
+    // Import settings
+    if (document.getElementById('import-settings')?.checked) {
+        if (data.user) {
+            AppState.user = { ...AppState.user, ...data.user };
+        }
+        if (data.settings) {
+            AppState.settings = { ...AppState.settings, ...data.settings };
+        }
+    }
+    
+    saveState();
+    
+    // Refresh all views
+    renderFlows();
+    initWorkings();
+    renderTasks();
+    renderJournal();
+    renderMastery();
+    
+    window.closeModal('selectiveImportModal');
+    
+    const total = Object.values(importedCount).reduce((a, b) => a + b, 0);
+    showNotification(`Import complete! ${total} items imported.`, 'gold');
 };
 
 
 window.confirmClearData = () => {
-    if (confirm("Are you sure you want to wipe all data? This cannot be undone.")) {
+    showConfirmModal('⚠️ Clear All Data', 'Are you sure you want to wipe all data? This cannot be undone!', () => {
         localStorage.removeItem('zevist_app_state');
         location.reload();
-    }
+    });
 };
 
 // --- ASTRO & UTILS ---
@@ -3929,8 +4776,6 @@ function checkBadges() {
     }
 }
 
-/* Heatmap removed */
-
 function showNotification(msg, type) {
     const toast = document.createElement('div');
     toast.style.background = type === 'gold' ? 'var(--gold-primary)' : '#333';
@@ -3977,4 +4822,510 @@ function countHistoryTotal(state, key) {
 
 function countCompletedTasks(state) {
     return state.tasks.filter(t => t.status === 'done').length;
+}
+
+// ============================================
+// PDF EXPORT FUNCTIONALITY
+// ============================================
+
+window.openExportPDFModal = (type) => {
+    const modalId = 'exportPDFModal';
+    let modal = document.getElementById(modalId);
+    
+    const title = type === 'journal' ? 'Export Journal' : 'Export Calendar';
+    const icon = type === 'journal' ? '📓' : '📅';
+    
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = modalId;
+        modal.className = 'modal';
+        document.body.appendChild(modal);
+    }
+    
+    modal.innerHTML = `
+        <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>${icon} ${title}</h2>
+                <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:20px;">Select date range for export:</p>
+                
+                <div style="display:flex; flex-direction:column; gap:15px;">
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="radio" name="exportRange" value="all" checked onchange="toggleDateRange(false)">
+                        <span>Export All Entries</span>
+                    </label>
+                    
+                    <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
+                        <input type="radio" name="exportRange" value="range" onchange="toggleDateRange(true)">
+                        <span>Select Date Range</span>
+                    </label>
+                    
+                    <div id="dateRangeInputs" style="display:none; padding-left:25px; margin-top:10px;">
+                        <div style="display:flex; gap:15px; flex-wrap:wrap;">
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:0.9rem;">From</label>
+                                <input type="date" id="exportFromDate" class="input" style="width:160px;">
+                            </div>
+                            <div>
+                                <label style="display:block; margin-bottom:5px; color:var(--text-muted); font-size:0.9rem;">To</label>
+                                <input type="date" id="exportToDate" class="input" style="width:160px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
+                <button class="btn btn-gold" onclick="generatePDF('${type}')">📄 Generate PDF</button>
+            </div>
+        </div>
+    `;
+    
+    // Set default dates
+    const today = new Date().toISOString().split('T')[0];
+    const monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    setTimeout(() => {
+        document.getElementById('exportFromDate').value = monthAgo;
+        document.getElementById('exportToDate').value = today;
+    }, 10);
+    
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('active'), 10);
+};
+
+window.toggleDateRange = (show) => {
+    document.getElementById('dateRangeInputs').style.display = show ? 'block' : 'none';
+};
+
+window.generatePDF = (type) => {
+    const isRange = document.querySelector('input[name="exportRange"]:checked').value === 'range';
+    let fromDate = null, toDate = null;
+    
+    if (isRange) {
+        fromDate = document.getElementById('exportFromDate').value;
+        toDate = document.getElementById('exportToDate').value;
+        
+        if (!fromDate || !toDate) {
+            showNotification('Please select both dates', 'error');
+            return;
+        }
+        
+        if (new Date(fromDate) > new Date(toDate)) {
+            showNotification('From date must be before To date', 'error');
+            return;
+        }
+    }
+    
+    if (type === 'journal') {
+        exportJournalPDF(fromDate, toDate);
+    } else {
+        exportCalendarPDF(fromDate, toDate);
+    }
+    
+    window.closeModal('exportPDFModal');
+};
+
+function exportJournalPDF(fromDate, toDate) {
+    let entries = [...AppState.journal].sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    if (fromDate && toDate) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59);
+        
+        entries = entries.filter(e => {
+            const entryDate = new Date(e.date);
+            return entryDate >= from && entryDate <= to;
+        });
+    }
+    
+    if (entries.length === 0) {
+        showNotification('No journal entries found in selected range', 'error');
+        return;
+    }
+    
+    const dateRangeText = fromDate && toDate 
+        ? `${formatDateForDisplay(fromDate)} - ${formatDateForDisplay(toDate)}`
+        : 'All Time';
+    
+    const moodEmojis = { great: '😊', good: '🙂', neutral: '😐', low: '😔', bad: '😢' };
+    
+    let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Journal Export - Arcana</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    background: #1a1a2e; 
+                    color: #e0e0e0;
+                    padding: 40px;
+                    line-height: 1.6;
+                }
+                .header { 
+                    text-align: center; 
+                    margin-bottom: 40px;
+                    border-bottom: 2px solid #d4af37;
+                    padding-bottom: 20px;
+                }
+                .header h1 { 
+                    color: #d4af37; 
+                    font-size: 2.5rem;
+                    margin-bottom: 10px;
+                }
+                .header .subtitle { color: #888; font-size: 1rem; }
+                .entry { 
+                    background: #252542;
+                    border-radius: 10px;
+                    padding: 25px;
+                    margin-bottom: 25px;
+                    border-left: 4px solid #d4af37;
+                    page-break-inside: avoid;
+                }
+                .entry-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 15px;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                }
+                .entry-date { 
+                    color: #d4af37; 
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                }
+                .entry-mood { 
+                    background: rgba(212, 175, 55, 0.2);
+                    padding: 5px 12px;
+                    border-radius: 20px;
+                    font-size: 0.9rem;
+                }
+                .entry-content { 
+                    white-space: pre-wrap;
+                    margin-bottom: 15px;
+                }
+                .entry-tags { 
+                    display: flex; 
+                    gap: 8px; 
+                    flex-wrap: wrap;
+                }
+                .tag {
+                    background: rgba(212, 175, 55, 0.15);
+                    color: #d4af37;
+                    padding: 4px 10px;
+                    border-radius: 15px;
+                    font-size: 0.85rem;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 40px;
+                    color: #666;
+                    font-size: 0.9rem;
+                }
+                @media print {
+                    body { background: white; color: #333; }
+                    .entry { background: #f5f5f5; border-left-color: #b8860b; }
+                    .header h1 { color: #b8860b; }
+                    .entry-date { color: #b8860b; }
+                    .tag { background: #f0e6d0; color: #8b7355; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📓 Journal</h1>
+                <div class="subtitle">${dateRangeText} • ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</div>
+            </div>
+    `;
+    
+    entries.forEach(entry => {
+        const date = new Date(entry.date);
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+        const mood = entry.mood ? `${moodEmojis[entry.mood] || ''} ${entry.mood.charAt(0).toUpperCase() + entry.mood.slice(1)}` : '';
+        const tags = entry.tags ? entry.tags.split(',').map(t => t.trim()).filter(t => t) : [];
+        
+        html += `
+            <div class="entry">
+                <div class="entry-header">
+                    <span class="entry-date">${formattedDate}</span>
+                    ${mood ? `<span class="entry-mood">${mood}</span>` : ''}
+                </div>
+                <div class="entry-content">${escapeHtml(entry.content)}</div>
+                ${tags.length > 0 ? `
+                    <div class="entry-tags">
+                        ${tags.map(t => `<span class="tag">#${t}</span>`).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `;
+    });
+    
+    html += `
+            <div class="footer">
+                Exported from Arcana Productivity • ${new Date().toLocaleString()}
+            </div>
+        </body>
+        </html>
+    `;
+    
+    openPrintWindow(html, 'journal');
+}
+
+function exportCalendarPDF(fromDate, toDate) {
+    // Get scheduled items
+    let scheduled = [...(AppState.scheduled || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
+    
+    // Get journal entries for dates
+    let journalByDate = {};
+    AppState.journal.forEach(j => {
+        const dateKey = new Date(j.date).toISOString().split('T')[0];
+        if (!journalByDate[dateKey]) journalByDate[dateKey] = [];
+        journalByDate[dateKey].push(j);
+    });
+    
+    // Get completed flows for dates
+    let flowsByDate = {};
+    AppState.flows.forEach(flow => {
+        if (flow.completedDates) {
+            flow.completedDates.forEach(dateStr => {
+                const dateKey = dateStr.split('T')[0];
+                if (!flowsByDate[dateKey]) flowsByDate[dateKey] = [];
+                flowsByDate[dateKey].push(flow.title);
+            });
+        }
+    });
+    
+    if (fromDate && toDate) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        to.setHours(23, 59, 59);
+        
+        scheduled = scheduled.filter(s => {
+            const d = new Date(s.date);
+            return d >= from && d <= to;
+        });
+        
+        // Filter journal and flows by date
+        Object.keys(journalByDate).forEach(key => {
+            const d = new Date(key);
+            if (d < from || d > to) delete journalByDate[key];
+        });
+        Object.keys(flowsByDate).forEach(key => {
+            const d = new Date(key);
+            if (d < from || d > to) delete flowsByDate[key];
+        });
+    }
+    
+    // Collect all dates with activity
+    const allDates = new Set();
+    scheduled.forEach(s => allDates.add(s.date));
+    Object.keys(journalByDate).forEach(d => allDates.add(d));
+    Object.keys(flowsByDate).forEach(d => allDates.add(d));
+    
+    if (allDates.size === 0) {
+        showNotification('No calendar activity found in selected range', 'error');
+        return;
+    }
+    
+    const dateRangeText = fromDate && toDate 
+        ? `${formatDateForDisplay(fromDate)} - ${formatDateForDisplay(toDate)}`
+        : 'All Time';
+    
+    let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Calendar Export - Arcana</title>
+            <style>
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    background: #1a1a2e; 
+                    color: #e0e0e0;
+                    padding: 40px;
+                    line-height: 1.6;
+                }
+                .header { 
+                    text-align: center; 
+                    margin-bottom: 40px;
+                    border-bottom: 2px solid #d4af37;
+                    padding-bottom: 20px;
+                }
+                .header h1 { 
+                    color: #d4af37; 
+                    font-size: 2.5rem;
+                    margin-bottom: 10px;
+                }
+                .header .subtitle { color: #888; font-size: 1rem; }
+                .date-section {
+                    background: #252542;
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                    page-break-inside: avoid;
+                }
+                .date-header {
+                    color: #d4af37;
+                    font-size: 1.2rem;
+                    font-weight: 600;
+                    margin-bottom: 15px;
+                    padding-bottom: 10px;
+                    border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+                }
+                .activity-group {
+                    margin-bottom: 15px;
+                }
+                .activity-label {
+                    color: #888;
+                    font-size: 0.85rem;
+                    text-transform: uppercase;
+                    margin-bottom: 8px;
+                }
+                .activity-item {
+                    background: rgba(255,255,255,0.05);
+                    padding: 10px 15px;
+                    border-radius: 6px;
+                    margin-bottom: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+                .activity-icon { font-size: 1.2rem; }
+                .activity-time { color: #d4af37; font-size: 0.9rem; min-width: 60px; }
+                .completed-flow {
+                    color: #4ade80;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 40px;
+                    color: #666;
+                    font-size: 0.9rem;
+                }
+                @media print {
+                    body { background: white; color: #333; }
+                    .date-section { background: #f5f5f5; }
+                    .header h1, .date-header { color: #b8860b; }
+                    .activity-item { background: #eee; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>📅 Calendar</h1>
+                <div class="subtitle">${dateRangeText}</div>
+            </div>
+    `;
+    
+    // Sort dates
+    const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
+    
+    sortedDates.forEach(dateStr => {
+        const date = new Date(dateStr);
+        const formattedDate = date.toLocaleDateString('en-US', { 
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        
+        const dayScheduled = scheduled.filter(s => s.date === dateStr);
+        const dayJournals = journalByDate[dateStr] || [];
+        const dayFlows = flowsByDate[dateStr] || [];
+        
+        html += `<div class="date-section">
+            <div class="date-header">${formattedDate}</div>`;
+        
+        // Scheduled items
+        if (dayScheduled.length > 0) {
+            html += `<div class="activity-group">
+                <div class="activity-label">Scheduled</div>`;
+            dayScheduled.forEach(item => {
+                const flow = AppState.flows.find(f => f.id === item.flowId);
+                const title = flow ? flow.title : 'Unknown Flow';
+                html += `<div class="activity-item">
+                    <span class="activity-icon">🔮</span>
+                    <span class="activity-time">${item.time || '--:--'}</span>
+                    <span>${escapeHtml(title)}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        
+        // Completed flows
+        if (dayFlows.length > 0) {
+            html += `<div class="activity-group">
+                <div class="activity-label">Completed Flows</div>`;
+            dayFlows.forEach(title => {
+                html += `<div class="activity-item completed-flow">
+                    <span class="activity-icon">✓</span>
+                    <span>${escapeHtml(title)}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        
+        // Journal entries
+        if (dayJournals.length > 0) {
+            html += `<div class="activity-group">
+                <div class="activity-label">Journal Entries</div>`;
+            dayJournals.forEach(j => {
+                const preview = j.content.length > 100 ? j.content.substring(0, 100) + '...' : j.content;
+                html += `<div class="activity-item">
+                    <span class="activity-icon">📝</span>
+                    <span>${escapeHtml(preview)}</span>
+                </div>`;
+            });
+            html += `</div>`;
+        }
+        
+        html += `</div>`;
+    });
+    
+    html += `
+            <div class="footer">
+                Exported from Arcana Productivity • ${new Date().toLocaleString()}
+            </div>
+        </body>
+        </html>
+    `;
+    
+    openPrintWindow(html, 'calendar');
+}
+
+function openPrintWindow(html, type) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        showNotification('Please allow popups to export PDF', 'error');
+        return;
+    }
+    
+    printWindow.document.write(html);
+    printWindow.document.close();
+    
+    // Auto-trigger print dialog after content loads
+    printWindow.onload = () => {
+        setTimeout(() => {
+            printWindow.print();
+        }, 250);
+    };
+    
+    showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ready! Use Print → Save as PDF`, 'gold');
+}
+
+function formatDateForDisplay(dateStr) {
+    return new Date(dateStr).toLocaleDateString('en-US', { 
+        month: 'short', day: 'numeric', year: 'numeric'
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
