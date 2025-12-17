@@ -15,7 +15,7 @@ const AppState = {
         badges: []
     },
     flows: [],
-    workings: [], 
+    workings: [],
     tasks: [],
     mastery: [],
     journal: [],
@@ -31,20 +31,20 @@ const AppState = {
     },
     history: {}, // Date -> { xp: number, flows: number, workings: number }
     activityLog: [], // Array of { type, title, xp, timestamp }
-    
+
     // Global Stats
     totalPracticeTime: 0, // in seconds
     totalReps: 0,
     pomodorosToday: 0,
     totalPomodoros: 0,
     lastPomodoroDate: null,
-    
+
     // Runtime state
     activeFlow: null,
     timerInterval: null,
     breathingInterval: null,
     pomoInterval: null,
-    
+
     // Pomodoro State (persisted)
     pomoState: {
         time: 25 * 60,
@@ -85,14 +85,14 @@ document.addEventListener('DOMContentLoaded', () => {
     initMastery();
     initCalendar();
     initSettings();
-    
+
     checkStreak();
     autoResetFlowCompletions();
     renderBadges();
-    
+
     // Keyboard shortcuts
     initKeyboardShortcuts();
-    
+
     // Mobile toggle
     document.getElementById('sidebarToggle')?.addEventListener('click', () => {
         document.getElementById('sidebar').classList.add('active');
@@ -107,9 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => {
         const sidebar = document.getElementById('sidebar');
         const toggle = document.getElementById('sidebarToggle');
-        if (window.innerWidth <= 768 && 
-            sidebar.classList.contains('active') && 
-            !sidebar.contains(e.target) && 
+        if (window.innerWidth <= 768 &&
+            sidebar.classList.contains('active') &&
+            !sidebar.contains(e.target) &&
             !toggle.contains(e.target)) {
             sidebar.classList.remove('active');
         }
@@ -121,9 +121,9 @@ function initKeyboardShortcuts() {
     document.addEventListener('keydown', (e) => {
         // Check if flow runner is active and we're on a reps step
         const flowRunnerActive = document.getElementById('flowRunner')?.classList.contains('active');
-        const isRepsStep = flowRunnerActive && runnerState.flow && 
+        const isRepsStep = flowRunnerActive && runnerState.flow &&
             runnerState.flow.steps[runnerState.stepIndex]?.type === 'reps';
-        
+
         // Handle reps shortcuts (spacebar, arrow keys, +/-)
         if (isRepsStep) {
             if (e.key === ' ' || e.key === 'Spacebar' || e.key === 'ArrowUp' || e.key === '+' || e.key === '=') {
@@ -137,15 +137,15 @@ function initKeyboardShortcuts() {
                 return;
             }
         }
-        
+
         // Don't trigger shortcuts if user is typing in an input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-        
+
         // Don't trigger if modal is open
         const modalOpen = document.querySelector('.modal.active');
         if (modalOpen) return;
-        
-        switch(e.key.toLowerCase()) {
+
+        switch (e.key.toLowerCase()) {
             case 'n':
                 e.preventDefault();
                 window.openFlowBuilder();
@@ -166,37 +166,37 @@ function initKeyboardShortcuts() {
                 break;
         }
     });
-    
+
     // Click anywhere on flow runner to increment reps (except on buttons)
     document.getElementById('flowRunner')?.addEventListener('click', (e) => {
         // Don't increment if clicking on a button or interactive element
         if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) return;
-        
-        const isRepsStep = runnerState.flow && 
+
+        const isRepsStep = runnerState.flow &&
             runnerState.flow.steps[runnerState.stepIndex]?.type === 'reps';
-        
+
         if (isRepsStep) {
             window.incrementRunnerReps();
         }
     });
-    
+
     // Volume button support for mobile (experimental - works on some Android browsers)
     // This uses the volumechange event which fires when volume buttons are pressed
     try {
         // Create a silent audio context to enable volume detection
         if ('AudioContext' in window || 'webkitAudioContext' in window) {
             let lastVolume = null;
-            
+
             // Monitor volume changes
             const checkVolume = () => {
                 const audio = document.createElement('audio');
                 audio.volume = 0.5; // Reference volume
             };
-            
+
             // Some browsers support this media key API
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.setActionHandler('pause', () => {
-                    const isRepsStep = runnerState.flow && 
+                    const isRepsStep = runnerState.flow &&
                         runnerState.flow.steps[runnerState.stepIndex]?.type === 'reps';
                     if (isRepsStep && document.getElementById('flowRunner')?.classList.contains('active')) {
                         window.incrementRunnerReps();
@@ -214,13 +214,13 @@ function initKeyboardShortcuts() {
 window.navigateTo = (pageId) => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    
+
     const navLink = document.querySelector(`.nav-item[data-page="${pageId}"]`);
     if (navLink) navLink.classList.add('active');
-    
+
     const page = document.getElementById(`page-${pageId}`);
     if (page) page.classList.add('active');
-    
+
     if (window.innerWidth <= 768) {
         document.getElementById('sidebar').classList.remove('active');
     }
@@ -264,7 +264,7 @@ function loadState() {
         AppState.pomodorosToday = parsed.pomodorosToday || 0;
         AppState.totalPomodoros = parsed.totalPomodoros || 0;
         AppState.lastPomodoroDate = parsed.lastPomodoroDate;
-        
+
         // Restore pomodoro state
         if (parsed.pomoState) {
             AppState.pomoState.time = parsed.pomoState.time || 25 * 60;
@@ -272,7 +272,7 @@ function loadState() {
             AppState.pomoState.mode = parsed.pomoState.mode || 'work';
             AppState.pomoState.isRunning = false; // Never auto-resume on load
         }
-        
+
         // Reset daily pomodoro counter if new day
         const today = new Date().toISOString().split('T')[0];
         if (AppState.lastPomodoroDate !== today) {
@@ -338,12 +338,12 @@ function logActivity(type, title, xp) {
 function renderActivityLog() {
     const container = document.getElementById('activityLogList');
     if (!container) return;
-    
+
     if (!AppState.activityLog || AppState.activityLog.length === 0) {
         container.innerHTML = '<div class="text-muted" style="text-align:center; padding: 20px;">No recent activity.</div>';
         return;
     }
-    
+
     container.innerHTML = AppState.activityLog.map(log => {
         const date = new Date(log.timestamp);
         const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -351,7 +351,7 @@ function renderActivityLog() {
         if (log.type === 'flow') icon = '🌊';
         if (log.type === 'working') icon = '✧';
         if (log.type === 'task') icon = '⚔️';
-        
+
         return `
             <div class="activity-item ${log.type}">
                 <div class="activity-time">${timeStr}</div>
@@ -366,22 +366,22 @@ function renderActivityLog() {
 
 function addXP(amount) {
     AppState.user.xp += amount;
-    
+
     // Level up check
     const nextLevelXP = Math.floor(XP_LEVEL_BASE * Math.pow(XP_LEVEL_MULTIPLIER, AppState.user.level - 1));
-    
+
     if (AppState.user.xp >= nextLevelXP) {
         AppState.user.xp -= nextLevelXP;
         AppState.user.level++;
         showNotification(`Level Up! You are now level ${AppState.user.level}`, 'gold');
         checkBadges();
     }
-    
+
     // Record history
     const today = new Date().toISOString().split('T')[0];
     if (!AppState.history[today]) AppState.history[today] = { xp: 0, flows: 0, workings: 0 };
     AppState.history[today].xp += amount;
-    
+
     updateXPDisplay();
     saveState();
 }
@@ -389,17 +389,17 @@ function addXP(amount) {
 function updateXPDisplay() {
     document.getElementById('userLevel').textContent = AppState.user.level;
     document.getElementById('currentXP').textContent = Math.floor(AppState.user.xp);
-    
+
     // Update Title based on Level
     const rankInterval = (typeof CONFIG !== 'undefined' && CONFIG.LEVEL_SYSTEM && CONFIG.LEVEL_SYSTEM.RANK_INTERVAL) ? CONFIG.LEVEL_SYSTEM.RANK_INTERVAL : 1;
     const titleIndex = Math.min(Math.floor((AppState.user.level - 1) / rankInterval), LEVEL_TITLES.length - 1);
-    
+
     const titleEl = document.querySelector('.level-text');
     if (titleEl) titleEl.textContent = LEVEL_TITLES[titleIndex];
 
     const nextLevelXP = Math.floor(XP_LEVEL_BASE * Math.pow(XP_LEVEL_MULTIPLIER, AppState.user.level - 1));
     document.getElementById('nextLevelXP').textContent = nextLevelXP;
-    
+
     const percentage = (AppState.user.xp / nextLevelXP) * 100;
     document.getElementById('userXPBar').style.width = `${percentage}%`;
 }
@@ -407,24 +407,24 @@ function updateXPDisplay() {
 function checkStreak() {
     const today = new Date().toISOString().split('T')[0];
     const lastLogin = AppState.user.lastLogin;
-    
+
     if (lastLogin !== today) {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const yesterdayStr = yesterday.toISOString().split('T')[0];
-        
+
         if (lastLogin === yesterdayStr) {
             AppState.user.streak++;
         } else if (lastLogin && lastLogin !== today) {
             if (AppState.user.lastLogin) AppState.user.streak = 1;
         } else {
-             AppState.user.streak = 1;
+            AppState.user.streak = 1;
         }
-        
+
         AppState.user.lastLogin = today;
         saveState();
     }
-    
+
     document.getElementById('currentStreak').textContent = AppState.user.streak;
     document.getElementById('longestStreak').textContent = Math.max(AppState.user.streak, parseInt(document.getElementById('longestStreak').textContent) || 0);
 }
@@ -433,7 +433,7 @@ function autoResetFlowCompletions() {
     // Auto-reset completed flows from previous days
     const today = new Date().toISOString().split('T')[0];
     let needsSave = false;
-    
+
     AppState.flows.forEach(flow => {
         if (flow.completedDates && flow.completedDates.length > 0) {
             // Keep only today's completion (auto-reset for new day)
@@ -444,7 +444,7 @@ function autoResetFlowCompletions() {
             }
         }
     });
-    
+
     if (needsSave) {
         saveState();
     }
@@ -467,7 +467,7 @@ function getFlowsForDate(dateObj) {
     const dateStr = dateObj.toISOString().split('T')[0];
     const dayOfWeek = dateObj.getDay(); // 0 = Sun, 6 = Sat
     const dayOfMonth = dateObj.getDate(); // 1-31
-    
+
     // 1. Recurring Flows
     const recurring = AppState.flows.filter(f => {
         if (!f.schedule) return false;
@@ -480,17 +480,17 @@ function getFlowsForDate(dateObj) {
         if (s.type === 'specific' && s.date === dateStr) return true;
         return false;
     });
-    
+
     // 2. One-off Scheduled Flows (from Calendar)
     const oneOffs = (AppState.schedule || []).filter(e => e.date === dateStr);
-    
+
     return { recurring, oneOffs };
 }
 
 function initDashboard() {
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
-    
+
     renderTodaySchedule();
     updateStatsDisplay();
 }
@@ -499,12 +499,12 @@ function renderTodaySchedule() {
     const list = document.getElementById('todaySchedule');
     const countBadge = document.getElementById('todayCount');
     if (!list) return;
-    
+
     const { recurring, oneOffs } = getFlowsForDate(new Date());
     const total = recurring.length + oneOffs.length;
-    
+
     if (countBadge) countBadge.textContent = `${total} items`;
-    
+
     if (total === 0) {
         list.innerHTML = `
             <div class="empty-state">
@@ -514,16 +514,16 @@ function renderTodaySchedule() {
             </div>`;
         return;
     }
-    
+
     list.innerHTML = '';
-    
+
     // Render Recurring with drag-drop
     recurring.forEach((flow, displayIndex) => {
         // Find original index in AppState.flows for the click handler
         const originalIndex = AppState.flows.findIndex(f => f.id === flow.id);
         const today = new Date().toISOString().split('T')[0];
         const isCompletedToday = flow.completedDates && flow.completedDates.includes(today);
-        
+
         const item = document.createElement('div');
         item.className = 'component-item';
         item.style.cursor = 'pointer';
@@ -547,7 +547,7 @@ function renderTodaySchedule() {
             </div>
             <button class="btn-sm btn-gold" onclick="event.stopPropagation(); openFlowPreview(${originalIndex})">Start</button>
         `;
-        
+
         // Drag events for dashboard reordering
         item.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', flow.id);
@@ -575,10 +575,10 @@ function renderTodaySchedule() {
                 showNotification('Schedule order updated', 'normal');
             }
         });
-        
+
         list.appendChild(item);
     });
-    
+
     // Render One-Offs
     oneOffs.forEach(item => {
         const el = document.createElement('div');
@@ -599,18 +599,18 @@ function renderTodaySchedule() {
 function updateStatsDisplay() {
     const today = new Date().toISOString().split('T')[0];
     const todayStats = AppState.history[today] || { xp: 0, flows: 0, workings: 0 };
-    
+
     // Dashboard Stats
     const todayCompletedEl = document.getElementById('todayCompleted');
     if (todayCompletedEl) todayCompletedEl.textContent = todayStats.flows;
-    
+
     const activeWorkingsEl = document.getElementById('activeWorkings');
     if (activeWorkingsEl) activeWorkingsEl.textContent = AppState.workings.filter(w => w.status === 'active').length;
-    
+
     // Pomodoro stats
     const pomodoroCountEl = document.getElementById('pomodoroCount');
     if (pomodoroCountEl) pomodoroCountEl.textContent = AppState.pomodorosToday || 0;
-    
+
     // Practice time (use actual tracked time)
     const todayTimeEl = document.getElementById('todayTime');
     if (todayTimeEl) {
@@ -618,7 +618,7 @@ function updateStatsDisplay() {
         const mins = Math.floor((AppState.totalPracticeTime % 3600) / 60);
         todayTimeEl.textContent = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
     }
-    
+
     renderActivityLog();
 
     // Update total stats
@@ -628,20 +628,20 @@ function updateStatsDisplay() {
         totalFlows += day.flows || 0;
         totalXP += day.xp || 0;
     });
-    
+
     const totalFlowsEl = document.getElementById('totalFlows');
     if (totalFlowsEl) totalFlowsEl.textContent = totalFlows;
-    
+
     const totalTimeEl = document.getElementById('totalTime');
     if (totalTimeEl) {
         const totalHours = Math.floor(AppState.totalPracticeTime / 3600);
         totalTimeEl.textContent = totalHours + 'h';
     }
-    
+
     // Statistics page stats
     const totalPomsEl = document.getElementById('totalPomodoros');
     if (totalPomsEl) totalPomsEl.textContent = AppState.totalPomodoros || 0;
-    
+
     const totalRepsEl = document.getElementById('totalReps');
     if (totalRepsEl) totalRepsEl.textContent = AppState.totalReps || 0;
 }
@@ -664,17 +664,17 @@ window.launchQuickTimer = () => {
     const mins = parseInt(document.getElementById('quickTimerMinutes').value) || 0;
     const secs = parseInt(document.getElementById('quickTimerSeconds').value) || 0;
     const totalSecs = (mins * 60) + secs;
-    
+
     if (totalSecs <= 0) return;
-    
+
     window.closeModal('quickTimerModal');
-    
+
     // Create a temporary flow for this timer
     const tempFlow = {
         title: "Quick Timer",
-        steps: [{ title: "Focus", type: "timer", duration: mins + (secs/60) }]
+        steps: [{ title: "Focus", type: "timer", duration: mins + (secs / 60) }]
     };
-    
+
     runFlowObject(tempFlow);
 };
 
@@ -685,7 +685,7 @@ let currentFlowCoverImage = null;
 window.handleFlowCoverUpload = (input) => {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             currentFlowCoverImage = e.target.result;
             const preview = document.getElementById('flowImagePreview');
             if (preview) {
@@ -724,13 +724,13 @@ const FLOW_TEMPLATES = (typeof CONFIG !== 'undefined' && CONFIG.TEMPLATES) ? CON
 function initFlows() {
     renderFlows();
     renderTemplates();
-    
+
     // Tab switching
     document.querySelectorAll('.flows-tabs .tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.flows-tabs .tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             const tabId = btn.dataset.tab;
             document.querySelectorAll('.flows-content').forEach(c => c.style.display = 'none');
             document.getElementById(`tab-${tabId}`).style.display = 'block';
@@ -764,7 +764,7 @@ window.openFlowBuilder = () => {
     }
 
     document.getElementById('componentsList').innerHTML = '<div class="empty-components"><p>Add components to build your flow</p></div>';
-    
+
     // Reset Schedule Inputs
     document.getElementById('flowSchedule').value = 'manual';
     document.getElementById('flowSpecificDate').value = '';
@@ -775,7 +775,7 @@ window.openFlowBuilder = () => {
     // Populate Image Preset Dropdown
     const coverPresetSelect = document.getElementById('flowCoverPreset');
     if (coverPresetSelect) {
-        coverPresetSelect.innerHTML = '<option value="">Choose Preset...</option>' + 
+        coverPresetSelect.innerHTML = '<option value="">Choose Preset...</option>' +
             CONFIG.IMAGE_PRESETS.map(p => `<option value="${p.file}">${p.name}</option>`).join('');
         coverPresetSelect.value = '';
     }
@@ -783,34 +783,34 @@ window.openFlowBuilder = () => {
     // Populate Mastery Dropdown
     const masterySelect = document.getElementById('flowMasteryLink');
     if (masterySelect) {
-        masterySelect.innerHTML = '<option value="">None</option>' + 
+        masterySelect.innerHTML = '<option value="">None</option>' +
             AppState.mastery.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
         masterySelect.value = '';
     }
-    
+
     window.openModal('flowBuilderModal');
 };
 
 window.editFlow = (id) => {
     const flow = AppState.flows.find(f => f.id === id);
     if (!flow) return;
-    
+
     editingFlowId = id;
     currentFlowCoverImage = flow.image || null;
     currentFlowBuilderSteps = JSON.parse(JSON.stringify(flow.steps)); // Deep copy
-    
+
     document.getElementById('flowName').value = flow.title;
     document.getElementById('flowDescription').value = flow.description || '';
     document.getElementById('flowImage').value = ''; // Clear file input (can't set programmatically)
-    
+
     // Populate Image Preset Dropdown
     const coverPresetSelect = document.getElementById('flowCoverPreset');
     if (coverPresetSelect) {
-        coverPresetSelect.innerHTML = '<option value="">Choose Preset...</option>' + 
+        coverPresetSelect.innerHTML = '<option value="">Choose Preset...</option>' +
             CONFIG.IMAGE_PRESETS.map(p => `<option value="${p.file}">${p.name}</option>`).join('');
         coverPresetSelect.value = '';
     }
-    
+
     const preview = document.getElementById('flowImagePreview');
     if (preview) {
         if (currentFlowCoverImage) {
@@ -821,16 +821,16 @@ window.editFlow = (id) => {
             preview.style.backgroundImage = '';
         }
     }
-    
+
     // Populate Schedule
     const schedule = flow.schedule || { type: 'manual' };
     document.getElementById('flowSchedule').value = schedule.type;
     document.getElementById('flowSpecificDate').value = schedule.date || '';
-    
+
     // Handle Schedule UI visibility
     const weeklyOptions = document.getElementById('weeklyOptions');
     const specificDateOption = document.getElementById('specificDateOption');
-    
+
     weeklyOptions.style.display = (schedule.type === 'weekly' || schedule.type === 'weekdays' || schedule.type === 'weekends') ? 'block' : 'none';
     specificDateOption.style.display = schedule.type === 'specific' ? 'block' : 'none';
 
@@ -842,15 +842,15 @@ window.editFlow = (id) => {
             if (cb) cb.checked = true;
         });
     }
-    
+
     // Populate Mastery Dropdown
     const masterySelect = document.getElementById('flowMasteryLink');
     if (masterySelect) {
-        masterySelect.innerHTML = '<option value="">None</option>' + 
+        masterySelect.innerHTML = '<option value="">None</option>' +
             AppState.mastery.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
         masterySelect.value = flow.masteryId || '';
     }
-    
+
     renderFlowBuilderSteps();
     window.openModal('flowBuilderModal');
 };
@@ -868,7 +868,7 @@ window.addComponent = (type) => {
         masteryId: '',
         breathingPattern: '' // For breathing type
     };
-    
+
     // Set default breathing pattern if available
     if (type === 'breathing') {
         const allPatterns = [...(typeof CONFIG !== 'undefined' && CONFIG.BREATHING_PATTERNS ? CONFIG.BREATHING_PATTERNS : []), ...AppState.breathingPatterns];
@@ -876,7 +876,7 @@ window.addComponent = (type) => {
             step.breathingPattern = allPatterns[0].value;
         }
     }
-    
+
     currentFlowBuilderSteps.push(step);
     renderFlowBuilderSteps();
 };
@@ -885,15 +885,15 @@ function renderFlowBuilderSteps() {
     const list = document.getElementById('componentsList');
     if (!list) return;
     list.innerHTML = '';
-    
+
     if (currentFlowBuilderSteps.length === 0) {
         list.innerHTML = '<div class="empty-components"><p>Add components to build your flow</p></div>';
         return;
     }
-    
+
     // Generate Mastery Options
     const masteryOptions = AppState.mastery.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
-    
+
     currentFlowBuilderSteps.forEach((step, index) => {
         const el = document.createElement('div');
         el.className = 'component-item';
@@ -902,26 +902,26 @@ function renderFlowBuilderSteps() {
         el.style.flexDirection = 'column';
         el.style.alignItems = 'stretch';
         el.style.gap = '10px';
-        
+
         // Drag events for step reordering
         el.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', index);
             el.classList.add('dragging');
         });
-        
+
         el.addEventListener('dragend', () => {
             el.classList.remove('dragging');
         });
-        
+
         el.addEventListener('dragover', (e) => {
             e.preventDefault();
             el.classList.add('drag-over');
         });
-        
+
         el.addEventListener('dragleave', () => {
             el.classList.remove('drag-over');
         });
-        
+
         el.addEventListener('drop', (e) => {
             e.preventDefault();
             el.classList.remove('drag-over');
@@ -933,7 +933,7 @@ function renderFlowBuilderSteps() {
                 renderFlowBuilderSteps();
             }
         });
-        
+
         let valueInput = '';
         if (step.type === 'breathing') {
             const allPatterns = [...(typeof CONFIG !== 'undefined' && CONFIG.BREATHING_PATTERNS ? CONFIG.BREATHING_PATTERNS : []), ...AppState.breathingPatterns];
@@ -1018,11 +1018,11 @@ function renderFlowBuilderSteps() {
                 </select>
             </div>
         `;
-        
+
         // Set selected mastery manually after render
         const select = el.querySelector('select');
         if (select && step.masteryId) select.value = step.masteryId;
-        
+
         list.appendChild(el);
     });
 }
@@ -1030,7 +1030,7 @@ function renderFlowBuilderSteps() {
 window.handleStepImageUpload = (index, input) => {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             currentFlowBuilderSteps[index].image = e.target.result;
             renderFlowBuilderSteps();
         };
@@ -1082,14 +1082,14 @@ window.saveFlow = () => {
     const title = document.getElementById('flowName').value;
     if (!title) return showNotification('Please enter a flow name', 'error');
     if (currentFlowBuilderSteps.length === 0) return showNotification('Add at least one component', 'error');
-    
+
     const masteryId = document.getElementById('flowMasteryLink').value;
-    
+
     // Capture Schedule
     const scheduleType = document.getElementById('flowSchedule').value;
     const scheduleDate = document.getElementById('flowSpecificDate').value;
     const scheduleDays = Array.from(document.querySelectorAll('#weeklyOptions input:checked')).map(cb => parseInt(cb.value));
-    
+
     const schedule = {
         type: scheduleType,
         date: scheduleDate,
@@ -1123,7 +1123,7 @@ window.saveFlow = () => {
         showNotification('Flow created', 'gold');
         logActivity('flow', `Created Flow: ${title}`, 50);
     }
-    
+
     saveState();
     renderFlows();
     window.closeModal('flowBuilderModal');
@@ -1142,7 +1142,7 @@ window.deleteFlow = (id) => {
 window.duplicateFlow = (id) => {
     const flow = AppState.flows.find(f => f.id === id);
     if (!flow) return;
-    
+
     const newFlow = {
         ...JSON.parse(JSON.stringify(flow)),
         id: Date.now(),
@@ -1150,7 +1150,7 @@ window.duplicateFlow = (id) => {
         created: new Date().toISOString(),
         completedDates: []
     };
-    
+
     AppState.flows.push(newFlow);
     saveState();
     renderFlows();
@@ -1161,12 +1161,12 @@ window.toggleFlowDone = (id, event) => {
     if (event) event.stopPropagation();
     const flow = AppState.flows.find(f => f.id === id);
     if (!flow) return;
-    
+
     if (!flow.completedDates) flow.completedDates = [];
-    
+
     const today = new Date().toISOString().split('T')[0];
     const index = flow.completedDates.indexOf(today);
-    
+
     if (index > -1) {
         flow.completedDates.splice(index, 1);
         showNotification('Flow marked incomplete', 'normal');
@@ -1175,7 +1175,7 @@ window.toggleFlowDone = (id, event) => {
         showNotification('Flow completed! ✓', 'gold');
         addXP(50);
         logActivity('flow', `Completed: ${flow.title}`, 50);
-        
+
         // Update history
         const todayKey = new Date().toISOString().split('T')[0];
         if (!AppState.history[todayKey]) {
@@ -1183,7 +1183,7 @@ window.toggleFlowDone = (id, event) => {
         }
         AppState.history[todayKey].flows += 1;
     }
-    
+
     saveState();
     renderFlows();
     renderTodaySchedule();
@@ -1194,25 +1194,25 @@ function renderFlows() {
     const grid = document.getElementById('flowsGrid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     if (AppState.flows.length === 0) {
         document.getElementById('noFlows').style.display = 'flex';
         return;
     }
     document.getElementById('noFlows').style.display = 'none';
-    
+
     AppState.flows.forEach((flow, index) => {
         const card = document.createElement('div');
         card.className = 'flow-card';
         card.draggable = true;
         card.dataset.index = index;
         const duration = flow.steps.reduce((acc, s) => acc + (parseFloat(s.duration) || 0), 0);
-        
+
         // Check if flow is scheduled and if completed today
         const today = new Date().toISOString().split('T')[0];
         const isScheduled = flow.schedule && flow.schedule.type !== 'manual';
         const isCompletedToday = flow.completedDates && flow.completedDates.includes(today);
-        
+
         card.innerHTML = `
             <div class="drag-handle">⋮⋮</div>
             <div class="flow-image" style="background-image: url('${flow.image || ''}')">
@@ -1238,7 +1238,7 @@ function renderFlows() {
                 </div>
             </div>
         `;
-        
+
         // Drag events for reordering
         card.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', index);
@@ -1263,7 +1263,7 @@ function renderFlows() {
                 showNotification('Flow order updated', 'normal');
             }
         });
-        
+
         card.addEventListener('click', () => openFlowPreview(index));
         grid.appendChild(card);
     });
@@ -1272,26 +1272,26 @@ function renderFlows() {
 window.openFlowPreview = (index) => {
     const flow = AppState.flows[index];
     if (!flow) return;
-    
+
     document.getElementById('previewFlowTitle').textContent = flow.title;
     document.getElementById('previewFlowDesc').textContent = flow.description || "No description.";
-    
+
     const stepsList = document.getElementById('previewFlowSteps');
     if (stepsList) {
         stepsList.innerHTML = flow.steps.map((s, i) => `
             <div style="padding:10px; border-bottom:1px solid var(--border-color); display:flex; justify-content:space-between;">
-                <span>${i+1}. ${s.title}</span>
+                <span>${i + 1}. ${s.title}</span>
                 <span style="color:var(--text-muted)">${s.type === 'reps' ? (s.targetReps + ' reps') : (s.duration + ' min')}</span>
             </div>
         `).join('');
     }
-    
+
     const startBtn = document.getElementById('startFlowBtn');
     startBtn.onclick = () => {
         window.closeModal('flowPreviewModal');
         runFlow(index);
     };
-    
+
     window.openModal('flowPreviewModal');
 };
 
@@ -1299,17 +1299,17 @@ function renderTemplates() {
     const grid = document.getElementById('templatesGrid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     FLOW_TEMPLATES.forEach((tmpl, index) => {
         const card = document.createElement('div');
         card.className = 'flow-card';
         const duration = tmpl.steps.reduce((acc, s) => acc + (parseFloat(s.duration) || 0), 0);
-        
+
         // Use template image if available
-        const imageStyle = tmpl.image 
+        const imageStyle = tmpl.image
             ? `background-image: url('${tmpl.image}'); background-size: cover; background-position: center;`
             : `background: linear-gradient(45deg, #222, #333);`;
-        
+
         card.innerHTML = `
             <div class="flow-image" style="${imageStyle}"></div>
             <div class="flow-content">
@@ -1332,10 +1332,11 @@ window.useTemplate = (index) => {
         id: Date.now(),
         title: tmpl.title,
         description: tmpl.description,
+        image: tmpl.image || null,  // Copy template image
         steps: JSON.parse(JSON.stringify(tmpl.steps)), // Deep copy
         created: new Date().toISOString()
     };
-    
+
     AppState.flows.push(flow);
     saveState();
     renderFlows();
@@ -1360,7 +1361,7 @@ function runFlowObject(flow) {
     runnerState.flow = flow;
     runnerState.stepIndex = 0;
     runnerState.isPaused = false;
-    
+
     document.getElementById('flowRunner').classList.add('active');
     renderRunnerStep();
 }
@@ -1371,15 +1372,15 @@ function renderRunnerStep() {
         finishFlow();
         return;
     }
-    
+
     const content = document.getElementById('runnerContent');
     const controls = document.getElementById('runnerControls');
-    
+
     // Progress
     const progress = ((runnerState.stepIndex) / runnerState.flow.steps.length) * 100;
     document.getElementById('runnerProgressBar').style.width = `${progress}%`;
     document.getElementById('runnerProgressText').textContent = `Step ${runnerState.stepIndex + 1}/${runnerState.flow.steps.length}`;
-    
+
     // Image
     let imageHtml = '';
     if (step.image) {
@@ -1431,14 +1432,13 @@ function renderRunnerStep() {
         <h2 class="runner-instruction">${step.title}</h2>
         ${instructionsHtml}
         ${mainDisplayHtml}
-        <p style="color:#888; margin-top:10px;">${
-            step.type === 'timer' ? 'Focus until the timer ends' : 
-            (step.type === 'reps' ? 'Complete the reps' : 
-            (step.type === 'stopwatch' ? 'Time your session' : 
-            (step.type === 'breathing' ? 'Follow the breathing pattern' : 'Read and internalize')))
+        <p style="color:#888; margin-top:10px;">${step.type === 'timer' ? 'Focus until the timer ends' :
+            (step.type === 'reps' ? 'Complete the reps' :
+                (step.type === 'stopwatch' ? 'Time your session' :
+                    (step.type === 'breathing' ? 'Follow the breathing pattern' : 'Read and internalize')))
         }</p>
     `;
-    
+
     // Controls with Previous Step button
     const showPrevious = runnerState.stepIndex > 0;
     controls.innerHTML = `
@@ -1447,7 +1447,7 @@ function renderRunnerStep() {
         <button class="btn btn-outline" onclick="skipRunnerStep()">Skip</button>
         <button class="btn btn-gold" onclick="nextRunnerStep()">Next Step →</button>
     `;
-    
+
     // Start Timer if needed
     if (step.type === 'breathing') {
         // Breathing exercises handle their own overlay
@@ -1468,10 +1468,10 @@ function renderRunnerStep() {
 window.incrementRunnerReps = (event) => {
     if (event) event.stopPropagation(); // Prevent double-counting from click bubbling
     if (!runnerState.flow || runnerState.flow.steps[runnerState.stepIndex].type !== 'reps') return;
-    
+
     runnerState.currentReps++;
     updateRepsDisplay();
-    
+
     if (runnerState.currentReps >= runnerState.targetReps) {
         showNotification("Target Reps Reached!", "gold");
         playNotificationSound();
@@ -1482,7 +1482,7 @@ window.decrementRunnerReps = (event) => {
     if (event) event.stopPropagation(); // Prevent triggering increment from click bubbling
     if (!runnerState.flow || runnerState.flow.steps[runnerState.stepIndex].type !== 'reps') return;
     if (runnerState.currentReps <= 0) return;
-    
+
     runnerState.currentReps--;
     updateRepsDisplay();
 };
@@ -1501,11 +1501,11 @@ function startRunnerTimer(mode = 'countdown') {
     clearInterval(runnerState.timer);
     runnerState.timer = setInterval(() => {
         if (runnerState.isPaused) return;
-        
+
         if (mode === 'countdown') {
             runnerState.timeLeft--;
             updateRunnerTimerDisplay();
-            
+
             if (runnerState.timeLeft <= 0) {
                 clearInterval(runnerState.timer);
                 playNotificationSound();
@@ -1514,16 +1514,16 @@ function startRunnerTimer(mode = 'countdown') {
         } else if (mode === 'countup') {
             runnerState.elapsedTime++;
             updateRunnerTimerDisplay(true);
-            
+
             // Optional goal check for stopwatch
             const step = runnerState.flow.steps[runnerState.stepIndex];
             if (step.duration > 0 && runnerState.elapsedTime >= step.duration * 60) {
-                 // Just notify, don't stop
-                 if (!runnerState.goalReached) {
-                     playNotificationSound();
-                     showNotification("Goal Duration Reached", "gold");
-                     runnerState.goalReached = true;
-                 }
+                // Just notify, don't stop
+                if (!runnerState.goalReached) {
+                    playNotificationSound();
+                    showNotification("Goal Duration Reached", "gold");
+                    runnerState.goalReached = true;
+                }
             }
         }
     }, 1000);
@@ -1552,10 +1552,10 @@ window.skipRunnerStep = () => {
 
 window.nextRunnerStep = () => {
     clearInterval(runnerState.timer);
-    
+
     // Handle Mastery Linking
     const currentStep = runnerState.flow.steps[runnerState.stepIndex];
-    
+
     // Track Global Stats (regardless of mastery)
     if (currentStep.type === 'reps') {
         const repsCompleted = runnerState.currentReps || currentStep.targetReps || 0;
@@ -1565,15 +1565,15 @@ window.nextRunnerStep = () => {
     } else if (currentStep.type === 'timer') {
         AppState.totalPracticeTime += (currentStep.duration || 0) * 60;
     }
-    
+
     // Determine Mastery ID: Step-level ove
     const masteryId = currentStep.masteryId || runnerState.flow.masteryId;
-    
+
     if (masteryId) {
         const masteryItem = AppState.mastery.find(m => m.id == masteryId);
         if (masteryItem) {
             let valueToAdd = 0;
-            
+
             if (masteryItem.type === 'reps') {
                 // If mastery is Reps based
                 if (currentStep.type === 'reps') {
@@ -1586,7 +1586,7 @@ window.nextRunnerStep = () => {
                 // If mastery is Hours based (default)
                 if (currentStep.type === 'reps') {
                     // Reps don't count towards hourly mastery
-                    valueToAdd = 0; 
+                    valueToAdd = 0;
                 } else if (currentStep.type === 'stopwatch') {
                     valueToAdd = (runnerState.elapsedTime || 0) / 3600; // Seconds to Hours
                 } else {
@@ -1595,7 +1595,7 @@ window.nextRunnerStep = () => {
                     valueToAdd = (currentStep.duration || 0) / 60;
                 }
             }
-            
+
             if (valueToAdd > 0) {
                 masteryItem.currentHours = (parseFloat(masteryItem.currentHours) + valueToAdd).toFixed(2);
                 const unitLabel = masteryItem.type === 'reps' ? 'reps' : 'hrs';
@@ -1639,7 +1639,7 @@ function showCelebration() {
         </div>
     `;
     document.body.appendChild(celebration);
-    
+
     // Create confetti particles
     for (let i = 0; i < 50; i++) {
         const confetti = document.createElement('div');
@@ -1649,7 +1649,7 @@ function showCelebration() {
         confetti.style.backgroundColor = ['#d4af37', '#ffd700', '#ffec8b', '#daa520', '#fff8dc'][Math.floor(Math.random() * 5)];
         celebration.querySelector('.celebration-confetti').appendChild(confetti);
     }
-    
+
     // Remove after animation
     setTimeout(() => {
         celebration.remove();
@@ -1659,17 +1659,17 @@ function showCelebration() {
 function finishFlow() {
     clearInterval(runnerState.timer);
     document.getElementById('flowRunner').classList.remove('active');
-    
+
     // Show celebration
     showCelebration();
-    
+
     addXP(100);
-    
+
     // Update history
     const today = new Date().toISOString().split('T')[0];
     if (!AppState.history[today]) AppState.history[today] = { xp: 0, flows: 0, workings: 0 };
     AppState.history[today].flows++;
-    
+
     const flowName = AppState.activeFlow ? AppState.activeFlow.name : (runnerState.flow ? runnerState.flow.title : 'Flow');
     logActivity('flow', flowName, 100);
 
@@ -1694,7 +1694,7 @@ let currentWorkingImage = null;
 window.handleWorkingImageUpload = (input) => {
     if (input.files && input.files[0]) {
         const reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function (e) {
             currentWorkingImage = e.target.result;
             document.getElementById('workingImage').value = currentWorkingImage;
             document.getElementById('workingImagePreviewImg').src = currentWorkingImage;
@@ -1731,9 +1731,9 @@ window.openWorkingBuilder = () => {
 window.saveWorking = () => {
     const name = document.getElementById('workingName').value;
     if (!name) return showNotification('Name required', 'error');
-    
+
     const imageData = document.getElementById('workingImage').value || currentWorkingImage;
-    
+
     if (window.currentEditingWorkingId) {
         // Edit existing working
         const w = AppState.workings.find(x => x.id === window.currentEditingWorkingId);
@@ -1765,7 +1765,7 @@ window.saveWorking = () => {
         AppState.workings.push(working);
         addXP(50);
     }
-    
+
     saveState();
     initWorkings();
     window.closeModal('workingBuilderModal');
@@ -1774,7 +1774,7 @@ window.saveWorking = () => {
 function initWorkings(filterStatus = 'active') {
     const grid = document.getElementById('workingsGrid');
     const list = document.getElementById('activeWorkingsList');
-    
+
     // Setup Tabs
     const tabs = document.querySelectorAll('.workings-tabs .tab-btn');
     tabs.forEach(tab => {
@@ -1789,23 +1789,23 @@ function initWorkings(filterStatus = 'active') {
             tab.classList.add('active');
         }
     });
-    
+
     if (grid) grid.innerHTML = '';
     if (list) list.innerHTML = '';
-    
+
     const filteredWorkings = AppState.workings.filter(w => w.status === filterStatus);
-    
+
     if (filteredWorkings.length === 0) {
         if (document.getElementById('noWorkings') && filterStatus === 'active') {
             document.getElementById('noWorkings').style.display = 'flex';
         } else if (grid) {
-             grid.innerHTML = `<div class="text-muted" style="width:100%; text-align:center; padding:20px;">No ${filterStatus} workings found.</div>`;
-             if (document.getElementById('noWorkings')) document.getElementById('noWorkings').style.display = 'none';
+            grid.innerHTML = `<div class="text-muted" style="width:100%; text-align:center; padding:20px;">No ${filterStatus} workings found.</div>`;
+            if (document.getElementById('noWorkings')) document.getElementById('noWorkings').style.display = 'none';
         }
     } else {
         if (document.getElementById('noWorkings')) document.getElementById('noWorkings').style.display = 'none';
     }
-    
+
     // Main Grid
     filteredWorkings.forEach(w => {
         if (grid) {
@@ -1815,9 +1815,9 @@ function initWorkings(filterStatus = 'active') {
                 const filled = i < w.daysCompleted;
                 circles += `<div class="progress-circle ${filled ? 'filled' : ''}" title="Day ${i + 1}"></div>`;
             }
-            
+
             const startDate = w.startDate ? new Date(w.startDate).toLocaleDateString() : 'N/A';
-            
+
             const card = document.createElement('div');
             card.className = 'flow-card';
             card.innerHTML = `
@@ -1853,13 +1853,13 @@ function initWorkings(filterStatus = 'active') {
             grid.appendChild(card);
         }
     });
-        
+
     // Dashboard List (Always Active only)
     if (list) {
         AppState.workings.filter(w => w.status === 'active').forEach(w => {
             const daysLeft = w.duration - w.daysCompleted;
             const startDate = w.startDate ? new Date(w.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A';
-            
+
             const item = document.createElement('div');
             item.className = 'component-item';
             item.style.flexDirection = 'column';
@@ -1917,7 +1917,7 @@ window.decrementWorkingDay = (id) => {
 window.editWorking = (id) => {
     const w = AppState.workings.find(x => x.id === id);
     if (!w) return;
-    
+
     document.getElementById('workingName').value = w.name;
     document.getElementById('workingIntention').value = w.intention || '';
     document.getElementById('workingAffirmation').value = w.affirmation || '';
@@ -1925,7 +1925,7 @@ window.editWorking = (id) => {
     document.getElementById('workingStartDate').value = w.startDate;
     document.getElementById('workingModalTitle').textContent = 'Edit Working';
     document.getElementById('workingSaveBtn').textContent = 'Save Changes';
-    
+
     // Handle image
     currentWorkingImage = w.image || null;
     document.getElementById('workingImage').value = currentWorkingImage || '';
@@ -1935,7 +1935,7 @@ window.editWorking = (id) => {
     } else {
         document.getElementById('workingImagePreview').style.display = 'none';
     }
-    
+
     // Store editing ID for save function
     window.currentEditingWorkingId = id;
     window.openModal('workingBuilderModal');
@@ -1945,19 +1945,19 @@ window.doWorkingDaily = (id) => {
     const w = AppState.workings.find(x => x.id === id);
     if (w) {
         const today = new Date().toISOString().split('T')[0];
-        
+
         w.daysCompleted++;
-        
+
         // Track completed days
         if (!w.completedDays) w.completedDays = [];
         if (!w.completedDays.includes(today)) {
             w.completedDays.push(today);
         }
-        
+
         addXP(20);
         logActivity('working', `Working: ${w.name}`, 20);
         showNotification(`Day ${w.daysCompleted} completed for ${w.name}`, 'gold');
-        
+
         if (w.daysCompleted >= w.duration) {
             w.status = 'completed';
             showCelebration(); // Show celebration for completing working
@@ -2090,7 +2090,7 @@ window.openTaskModal = () => {
 window.editTask = (id) => {
     const task = AppState.tasks.find(t => t.id === id);
     if (!task) return;
-    
+
     editingTaskId = id;
     document.getElementById('taskName').value = task.name;
     document.getElementById('taskCategory').value = task.category;
@@ -2103,7 +2103,7 @@ window.editTask = (id) => {
 window.saveTask = () => {
     const name = document.getElementById('taskName').value;
     if (!name) return;
-    
+
     if (editingTaskId) {
         const task = AppState.tasks.find(t => t.id === editingTaskId);
         if (task) {
@@ -2126,7 +2126,7 @@ window.saveTask = () => {
         AppState.tasks.push(task);
         showNotification('Task created', 'gold');
     }
-    
+
     saveState();
     renderTasks();
     window.closeModal('taskModal');
@@ -2138,14 +2138,14 @@ function renderTasks() {
     const todoList = document.getElementById('todoList');
     const progressList = document.getElementById('progressList');
     const doneList = document.getElementById('doneList');
-    
+
     if (!todoList) return;
-    
+
     // Get filter values
     const searchQuery = document.getElementById('taskSearch')?.value.toLowerCase() || '';
     const categoryFilter = document.getElementById('taskCategoryFilter')?.value || '';
     const priorityFilter = document.getElementById('taskPriorityFilter')?.value || '';
-    
+
     // Filter tasks
     const filteredTasks = AppState.tasks.filter(task => {
         if (searchQuery && !task.name.toLowerCase().includes(searchQuery)) return false;
@@ -2153,35 +2153,35 @@ function renderTasks() {
         if (priorityFilter && task.priority.toLowerCase() !== priorityFilter.toLowerCase()) return false;
         return true;
     });
-    
+
     todoList.innerHTML = '';
     progressList.innerHTML = '';
     doneList.innerHTML = '';
-    
+
     let counts = { todo: 0, progress: 0, done: 0 };
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Priority colors
     const priorityColors = {
         high: '#ff6b6b',
         medium: 'var(--gold-primary)',
         low: '#6bff8e'
     };
-    
+
     filteredTasks.forEach(task => {
         counts[task.status]++;
         const el = document.createElement('div');
         el.className = 'task-card';
         el.draggable = true;
         el.dataset.taskId = task.id;
-        
+
         const isDone = task.status === 'done';
         const isOverdue = task.dueDate && task.dueDate < today && !isDone;
-        
+
         if (isOverdue) {
             el.classList.add('task-overdue');
         }
-        
+
         // Setup drag events
         el.addEventListener('dragstart', (e) => {
             // store the task id as a string and allow move
@@ -2193,7 +2193,7 @@ function renderTasks() {
         el.addEventListener('dragend', () => {
             el.classList.remove('dragging');
         });
-        
+
         // Format due date display
         let dueDateHtml = '';
         if (task.dueDate) {
@@ -2202,7 +2202,7 @@ function renderTasks() {
             const overdueClass = isOverdue ? 'task-badge-overdue' : '';
             dueDateHtml = `<span class="task-badge ${overdueClass}">📅 ${dateStr}</span>`;
         }
-        
+
         el.innerHTML = `
             <div class="task-check ${isDone ? 'checked' : ''}" onclick="toggleTaskDone(${task.id})"></div>
             <div class="task-content">
@@ -2218,12 +2218,12 @@ function renderTasks() {
                 <button class="btn-sm btn-danger" onclick="deleteTask(${task.id})" title="Delete">×</button>
             </div>
         `;
-        
+
         if (task.status === 'todo') todoList.appendChild(el);
         if (task.status === 'progress') progressList.appendChild(el);
         if (task.status === 'done') doneList.appendChild(el);
     });
-    
+
     document.getElementById('todoCount').textContent = counts.todo;
     document.getElementById('progressCount').textContent = counts.progress;
     document.getElementById('doneCount').textContent = counts.done;
@@ -2232,7 +2232,7 @@ function renderTasks() {
 window.toggleTaskDone = (id) => {
     const task = AppState.tasks.find(t => t.id === id);
     if (!task) return;
-    
+
     if (task.status === 'done') {
         task.status = 'todo';
     } else {
@@ -2247,11 +2247,11 @@ window.toggleTaskDone = (id) => {
 window.moveTask = (id, dir) => {
     const task = AppState.tasks.find(t => t.id === id);
     if (!task) return;
-    
+
     const states = ['todo', 'progress', 'done'];
     const currentIdx = states.indexOf(task.status);
     const newIdx = currentIdx + dir;
-    
+
     if (newIdx >= 0 && newIdx < states.length) {
         task.status = states[newIdx];
         if (task.status === 'done') {
@@ -2297,18 +2297,18 @@ function initPomodoro() {
             label.textContent = val;
             AppState.settings.pomodoro[key] = val;
             saveState();
-            
+
             // If currently in this mode and not running, update timer immediately
             const modeMap = {
                 'work': 'work',
                 'short': 'short',
                 'long': 'long'
             };
-            
+
             if (!AppState.pomoState.isRunning && AppState.pomoState.mode === modeMap[key]) {
-                 AppState.pomoState.time = val * 60;
-                 AppState.pomoState.totalTime = AppState.pomoState.time;
-                 updatePomoDisplay();
+                AppState.pomoState.time = val * 60;
+                AppState.pomoState.totalTime = AppState.pomoState.time;
+                updatePomoDisplay();
             }
         });
     };
@@ -2320,12 +2320,12 @@ function initPomodoro() {
 
     // Initialize display
     resetPomodoro();
-    
+
     document.querySelectorAll('.mode-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             const mode = btn.dataset.mode;
             AppState.pomoState.mode = mode;
             resetPomodoro();
@@ -2335,7 +2335,7 @@ function initPomodoro() {
 
 window.togglePomodoro = () => {
     const btn = document.getElementById('pomodoroStartBtn');
-    
+
     if (AppState.pomoState.isRunning) {
         clearInterval(AppState.pomoState.interval);
         AppState.pomoState.isRunning = false;
@@ -2348,12 +2348,12 @@ window.togglePomodoro = () => {
         btn.textContent = "Pause";
         btn.classList.remove('btn-gold');
         btn.classList.add('btn-outline');
-        
+
         AppState.pomoState.interval = setInterval(() => {
             AppState.pomoState.time--;
             updatePomoDisplay();
             saveState();
-            
+
             if (AppState.pomoState.time <= 0) {
                 clearInterval(AppState.pomoState.interval);
                 AppState.pomoState.isRunning = false;
@@ -2362,7 +2362,7 @@ window.togglePomodoro = () => {
                 btn.classList.add('btn-gold');
                 playNotificationSound();
                 showNotification("Timer Complete", "gold");
-                
+
                 if (AppState.pomoState.mode === 'work') {
                     AppState.pomodorosToday++;
                     AppState.totalPomodoros++;
@@ -2380,15 +2380,15 @@ window.togglePomodoro = () => {
 window.resetPomodoro = () => {
     clearInterval(AppState.pomoState.interval);
     AppState.pomoState.isRunning = false;
-    
+
     // Ensure settings exist
     const settings = AppState.settings.pomodoro || { work: 25, short: 5, long: 15 };
-    
+
     AppState.pomoState.time = settings[AppState.pomoState.mode] * 60;
     AppState.pomoState.totalTime = AppState.pomoState.time;
     updatePomoDisplay();
     saveState();
-    
+
     const btn = document.getElementById('pomodoroStartBtn');
     if (btn) {
         btn.textContent = "Start";
@@ -2402,7 +2402,7 @@ function updatePomoDisplay() {
     const s = (AppState.pomoState.time % 60).toString().padStart(2, '0');
     const el = document.getElementById('pomodoroTime');
     if (el) el.textContent = `${m}:${s}`;
-    
+
     // Ring progress
     const ring = document.getElementById('pomodoroRing');
     if (ring) {
@@ -2420,7 +2420,7 @@ function initBreathing() {
     const patternSelect = document.getElementById('breathingPattern');
     if (patternSelect) {
         patternSelect.innerHTML = '';
-        
+
         // Add CONFIG patterns
         if (typeof CONFIG !== 'undefined' && CONFIG.BREATHING_PATTERNS) {
             CONFIG.BREATHING_PATTERNS.forEach(pattern => {
@@ -2430,7 +2430,7 @@ function initBreathing() {
                 patternSelect.appendChild(option);
             });
         }
-        
+
         // Add custom patterns
         AppState.breathingPatterns.forEach(pattern => {
             const option = document.createElement('option');
@@ -2449,11 +2449,17 @@ window.startBreathingExercise = () => {
 window.closeBreathingExercise = () => {
     stopBreathingLoop();
     document.getElementById('breathingOverlay').classList.remove('active');
-    
+
     // If in flow mode, return to flow runner
     if (AppState.flowBreathingMode) {
         AppState.flowBreathingMode = false;
-        // Let user decide when to continue
+        // Show the flow runner again if it was hidden
+        const flowRunner = document.getElementById('flowRunner');
+        if (flowRunner && flowRunner.classList.contains('active')) {
+            // Flow runner is active - the breathing step is complete
+            // User can now click Next to proceed
+            showNotification('Breathing complete - click Next to continue', 'gold');
+        }
     }
 };
 
@@ -2474,11 +2480,11 @@ window.stopBreathingLoop = () => {
     const timerDisplay = document.getElementById('breathingTimer');
     const instructionDisplay = document.getElementById('breathingInstruction');
     const particlesContainer = document.getElementById('breathingParticles');
-    
+
     AppState.breathingActive = false;
     clearTimeout(AppState.breathingInterval);
     if (AppState.breathingTimerInterval) clearInterval(AppState.breathingTimerInterval);
-    
+
     // Reset display
     if (text) text.textContent = 'Ready';
     if (timerDisplay) timerDisplay.textContent = '';
@@ -2490,7 +2496,7 @@ window.stopBreathingLoop = () => {
         circle.style.boxShadow = '0 0 50px rgba(212, 175, 55, 0.6), 0 0 100px rgba(138, 43, 226, 0.4)';
     }
     if (particlesContainer) particlesContainer.innerHTML = '';
-    
+
     if (startBtn) startBtn.style.display = 'block';
     if (stopBtn) stopBtn.style.display = 'none';
 };
@@ -2498,23 +2504,23 @@ window.stopBreathingLoop = () => {
 function createParticles(color) {
     const container = document.getElementById('breathingParticles');
     if (!container || !AppState.breathingActive) return;
-    
+
     const particleCount = 8;
     for (let i = 0; i < particleCount; i++) {
         const particle = document.createElement('div');
         particle.className = 'breathing-particle';
-        
+
         const size = Math.random() * 6 + 3;
         const left = Math.random() * 100;
         const delay = Math.random() * 2;
         const duration = Math.random() * 4 + 6;
-        
+
         particle.style.width = size + 'px';
         particle.style.height = size + 'px';
         particle.style.left = left + '%';
         particle.style.animationDelay = delay + 's';
         particle.style.animationDuration = duration + 's';
-        
+
         if (color === 'gold') {
             particle.style.background = `radial-gradient(circle, rgba(255, 240, 100, 1), rgba(255, 200, 50, 0.8))`;
             particle.style.boxShadow = `0 0 ${size * 4}px rgba(255, 220, 100, 1), 0 0 ${size * 8}px rgba(255, 180, 50, 0.8), 0 0 ${size * 12}px rgba(255, 140, 0, 0.5)`;
@@ -2522,9 +2528,9 @@ function createParticles(color) {
             particle.style.background = `radial-gradient(circle, rgba(150, 255, 255, 1), rgba(0, 220, 255, 0.8))`;
             particle.style.boxShadow = `0 0 ${size * 4}px rgba(100, 255, 255, 1), 0 0 ${size * 8}px rgba(0, 200, 255, 0.8), 0 0 ${size * 12}px rgba(0, 150, 255, 0.5)`;
         }
-        
+
         container.appendChild(particle);
-        
+
         setTimeout(() => {
             if (particle.parentNode) particle.remove();
         }, duration * 1000 + delay * 1000);
@@ -2537,12 +2543,12 @@ function convertToPhases(patternData) {
     if (patternData.phases && Array.isArray(patternData.phases)) {
         return patternData.phases;
     }
-    
+
     // Convert old timing format to phases
     const timing = patternData.timing || { inhale: 4, hold1: 4, exhale: 4, hold2: 4 };
     const instructions = patternData.instructions || {};
     const phases = [];
-    
+
     if (timing.inhale > 0) {
         phases.push({ type: 'inhale', duration: timing.inhale, instruction: instructions.inhale || '' });
     }
@@ -2555,7 +2561,7 @@ function convertToPhases(patternData) {
     if (timing.hold2 > 0) {
         phases.push({ type: 'hold', duration: timing.hold2, instruction: instructions.hold2 || '' });
     }
-    
+
     return phases.length > 0 ? phases : [{ type: 'inhale', duration: 4 }, { type: 'exhale', duration: 4 }];
 }
 
@@ -2597,13 +2603,13 @@ function runBreathingLoop() {
     const timerDisplay = document.getElementById('breathingTimer');
     const instructionDisplay = document.getElementById('breathingInstruction');
     if (!text || !circle) return;
-    
+
     // Parse breathing pattern from CONFIG + custom patterns
     let phases = [{ type: 'inhale', duration: 4 }, { type: 'hold', duration: 4 }, { type: 'exhale', duration: 4 }, { type: 'hold', duration: 4 }]; // Default
-    
+
     if (patternSelect) {
         const selectedValue = patternSelect.value;
-        
+
         // Check CONFIG patterns first
         if (typeof CONFIG !== 'undefined' && CONFIG.BREATHING_PATTERNS) {
             const configPattern = CONFIG.BREATHING_PATTERNS.find(p => p.value === selectedValue);
@@ -2611,56 +2617,56 @@ function runBreathingLoop() {
                 phases = convertToPhases(configPattern);
             }
         }
-        
+
         // Check custom patterns (overrides CONFIG if same value)
         const customPattern = AppState.breathingPatterns.find(p => p.value === selectedValue);
         if (customPattern) {
             phases = convertToPhases(customPattern);
         }
     }
-    
+
     let phaseIndex = 0;
     let timeLeft = phases[0].duration;
     let timerInterval;
-    
+
     // Store timer interval for cleanup
     AppState.breathingTimerInterval = null;
-    
+
     const updateTimer = () => {
         if (timerDisplay) {
             timerDisplay.textContent = timeLeft > 0 ? timeLeft : '';
         }
     };
-    
+
     const runPhase = () => {
         if (!document.getElementById('breathingOverlay').classList.contains('active') || !AppState.breathingActive) {
             if (timerInterval) clearInterval(timerInterval);
             return;
         }
-        
+
         if (timerInterval) clearInterval(timerInterval);
-        
+
         const currentPhase = phases[phaseIndex];
         const visuals = getPhaseVisuals(currentPhase.type);
-        
+
         // Set label (custom label or default)
         text.textContent = currentPhase.label || visuals.defaultLabel;
-        
+
         // Set instruction if available
         if (instructionDisplay) {
             instructionDisplay.textContent = currentPhase.instruction || '';
         }
-        
+
         // Apply visuals (only if not null - allows hold to keep previous transform)
         if (visuals.transform !== null) circle.style.transform = visuals.transform;
         if (visuals.opacity !== null) circle.style.opacity = visuals.opacity;
         circle.style.background = visuals.background;
         circle.style.boxShadow = visuals.boxShadow;
         createParticles(visuals.particles);
-        
+
         timeLeft = currentPhase.duration;
         updateTimer();
-        
+
         // Countdown timer
         timerInterval = setInterval(() => {
             timeLeft--;
@@ -2668,14 +2674,14 @@ function runBreathingLoop() {
             if (timeLeft <= 0) clearInterval(timerInterval);
         }, 1000);
         AppState.breathingTimerInterval = timerInterval;
-        
+
         // Move to next phase
         AppState.breathingInterval = setTimeout(() => {
             phaseIndex = (phaseIndex + 1) % phases.length; // Loop back to start
             runPhase();
         }, currentPhase.duration * 1000);
     };
-    
+
     runPhase();
 }
 
@@ -2699,18 +2705,18 @@ window.closeBreathingPatternModal = () => {
 function renderCustomPatterns() {
     const list = document.getElementById('customPatternsList');
     if (!list) return;
-    
+
     if (AppState.breathingPatterns.length === 0) {
         list.innerHTML = '<p style="color:var(--text-muted); text-align:center;">No custom patterns yet. Create one above!</p>';
         return;
     }
-    
+
     list.innerHTML = '';
     AppState.breathingPatterns.forEach((pattern, index) => {
         const item = document.createElement('div');
         item.className = 'component-item';
         item.style.marginBottom = '10px';
-        
+
         // Generate phase summary
         let phaseSummary = '';
         if (pattern.phases && Array.isArray(pattern.phases)) {
@@ -2719,7 +2725,7 @@ function renderCustomPatterns() {
             const t = pattern.timing;
             phaseSummary = `${t.inhale}-${t.hold1}-${t.exhale}-${t.hold2}`;
         }
-        
+
         item.innerHTML = `
             <div style="flex:1;">
                 <div style="font-weight:600; color:var(--gold-primary); margin-bottom:5px;">${pattern.name}</div>
@@ -2730,7 +2736,7 @@ function renderCustomPatterns() {
                 <button class="btn-sm btn-danger" onclick="deleteBreathingPattern(${index})">Delete</button>
             </div>
         `;
-        
+
         list.appendChild(item);
     });
 }
@@ -2770,12 +2776,12 @@ window.movePhase = (index, direction) => {
 function renderBreathingPhases() {
     const container = document.getElementById('breathingPhasesList');
     if (!container) return;
-    
+
     if (window.breathingPhasesTemp.length === 0) {
         container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:10px;">Click "Add Phase" to start building your pattern</p>';
         return;
     }
-    
+
     container.innerHTML = window.breathingPhasesTemp.map((phase, index) => `
         <div class="component-item" style="margin-bottom:10px; padding:12px; background:var(--surface-elevated); border-radius:8px;">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
@@ -2804,23 +2810,23 @@ function renderBreathingPhases() {
 window.saveBreathingPattern = () => {
     const name = document.getElementById('breathPatternName').value.trim();
     if (!name) return showNotification('Please enter a pattern name', 'error');
-    
+
     if (window.breathingPhasesTemp.length === 0) {
         return showNotification('Please add at least one phase', 'error');
     }
-    
-    const description = document.getElementById('breathPatternDesc')?.value.trim() || 
+
+    const description = document.getElementById('breathPatternDesc')?.value.trim() ||
         `Custom: ${window.breathingPhasesTemp.map(p => p.duration).join('-')}`;
-    
+
     const pattern = {
         name,
-        value: window.editingBreathPatternIndex !== null && window.editingBreathPatternIndex !== undefined 
-            ? AppState.breathingPatterns[window.editingBreathPatternIndex].value 
+        value: window.editingBreathPatternIndex !== null && window.editingBreathPatternIndex !== undefined
+            ? AppState.breathingPatterns[window.editingBreathPatternIndex].value
             : `custom-${Date.now()}`,
         phases: [...window.breathingPhasesTemp],
         description
     };
-    
+
     if (window.editingBreathPatternIndex !== undefined && window.editingBreathPatternIndex !== null) {
         // Edit existing
         AppState.breathingPatterns[window.editingBreathPatternIndex] = pattern;
@@ -2831,18 +2837,18 @@ window.saveBreathingPattern = () => {
         AppState.breathingPatterns.push(pattern);
         showNotification('Pattern added', 'gold');
     }
-    
+
     saveState();
     renderCustomPatterns();
     initBreathing(); // Refresh breathing overlay dropdown
-    
+
     // Refresh flow builder if open
     if (document.getElementById('flowBuilderModal').classList.contains('active')) {
         renderFlowBuilderSteps();
     }
-    
+
     clearBreathingForm();
-    
+
     // Auto-close modal after successful save
     setTimeout(() => {
         window.closeModal('breathingPatternModal');
@@ -2855,11 +2861,11 @@ window.editBreathingPattern = (index) => {
     if (document.getElementById('breathPatternDesc')) {
         document.getElementById('breathPatternDesc').value = pattern.description || '';
     }
-    
+
     // Convert to phases format if needed
     window.breathingPhasesTemp = convertToPhases(pattern);
     renderBreathingPhases();
-    
+
     window.editingBreathPatternIndex = index;
 };
 
@@ -2887,13 +2893,13 @@ function clearBreathingForm() {
 window.startFlowBreathing = () => {
     const step = runnerState.flow.steps[runnerState.stepIndex];
     if (!step || step.type !== 'breathing') return;
-    
+
     // Set the pattern in the overlay
     const patternSelect = document.getElementById('breathingPattern');
     if (patternSelect && step.breathingPattern) {
         patternSelect.value = step.breathingPattern;
     }
-    
+
     // Open overlay and auto-start
     AppState.flowBreathingMode = true;
     document.getElementById('breathingOverlay').classList.add('active');
@@ -2913,27 +2919,27 @@ window.openJournalEntry = (editId = null) => {
     document.getElementById('journalEditId').value = '';
     document.getElementById('journalModalTitle').textContent = 'New Journal Entry';
     document.getElementById('journalSaveBtn').textContent = 'Save Entry';
-    
+
     // Populate Related To dropdown
     const relatedSelect = document.getElementById('journalRelated');
     if (relatedSelect) {
         relatedSelect.innerHTML = '<option value="">None</option>';
-        
+
         // Add flows
         AppState.flows.forEach(flow => {
             relatedSelect.innerHTML += `<option value="flow-${flow.id}">\u{1F30A} ${flow.title}</option>`;
         });
-        
+
         // Add workings
         AppState.workings.forEach(working => {
             relatedSelect.innerHTML += `<option value="working-${working.id}">\u2727 ${working.name}</option>`;
         });
     }
-    
+
     // Reset mood selector
     const moodOptions = document.querySelectorAll('input[name="journalMood"]');
     moodOptions.forEach(opt => opt.checked = opt.value === 'neutral');
-    
+
     // If editing, populate form
     if (editId) {
         const entry = AppState.journal.find(e => e.id === editId);
@@ -2944,15 +2950,15 @@ window.openJournalEntry = (editId = null) => {
             document.getElementById('journalTags').value = entry.tags || '';
             document.getElementById('journalModalTitle').textContent = 'Edit Journal Entry';
             document.getElementById('journalSaveBtn').textContent = 'Update Entry';
-            
+
             if (relatedSelect && entry.relatedTo) {
                 relatedSelect.value = entry.relatedTo;
             }
-            
+
             moodOptions.forEach(opt => opt.checked = opt.value === entry.mood);
         }
     }
-    
+
     window.openModal('journalModal');
 };
 
@@ -2961,9 +2967,9 @@ window.saveJournalEntry = () => {
     const content = document.getElementById('journalContent').value;
     const relatedTo = document.getElementById('journalRelated')?.value || '';
     const editId = document.getElementById('journalEditId').value;
-    
+
     if (!content) return;
-    
+
     if (editId) {
         // Update existing entry
         const idx = AppState.journal.findIndex(e => e.id == editId);
@@ -2987,13 +2993,13 @@ window.saveJournalEntry = () => {
             tags: document.getElementById('journalTags').value,
             relatedTo: relatedTo
         };
-        
+
         AppState.journal.unshift(entry);
         addXP(15);
         logActivity('working', 'Journal Entry', 15);
         showNotification('Journal entry saved', 'gold');
     }
-    
+
     saveState();
     renderJournal();
     window.closeModal('journalModal');
@@ -3015,54 +3021,54 @@ window.filterJournal = () => {
 function renderJournal() {
     const list = document.getElementById('journalList');
     if (!list) return;
-    
+
     // Get filter values
     const searchQuery = document.getElementById('journalSearch')?.value.toLowerCase() || '';
     const moodFilter = document.getElementById('journalMoodFilter')?.value || '';
     const dateFilter = document.getElementById('journalDateFilter')?.value || '';
-    
+
     // Filter entries
     let filteredEntries = AppState.journal.filter(entry => {
         // Search filter
         if (searchQuery) {
-            const matchesSearch = 
+            const matchesSearch =
                 (entry.title || '').toLowerCase().includes(searchQuery) ||
                 (entry.content || '').toLowerCase().includes(searchQuery) ||
                 (entry.tags || '').toLowerCase().includes(searchQuery);
             if (!matchesSearch) return false;
         }
-        
+
         // Mood filter
         if (moodFilter && entry.mood !== moodFilter) return false;
-        
+
         // Date filter
         if (dateFilter) {
             const entryDate = new Date(entry.date).toISOString().split('T')[0];
             if (entryDate !== dateFilter) return false;
         }
-        
+
         return true;
     });
-    
+
     list.innerHTML = '';
     if (filteredEntries.length === 0 && AppState.journal.length === 0) {
         if (document.getElementById('noJournal')) document.getElementById('noJournal').style.display = 'flex';
         return;
     }
     if (document.getElementById('noJournal')) document.getElementById('noJournal').style.display = 'none';
-    
+
     if (filteredEntries.length === 0) {
         list.innerHTML = '<div class="empty-state" style="padding: 40px;"><p>No entries match your filters</p></div>';
         return;
     }
-    
+
     const moodEmojis = { great: '😊', good: '🙂', neutral: '😐', low: '😔', bad: '😢' };
-    
+
     filteredEntries.forEach(entry => {
         const el = document.createElement('div');
         el.className = 'card journal-card';
         el.style.marginBottom = '15px';
-        
+
         // Parse relatedTo to display name
         let relatedLabel = '';
         if (entry.relatedTo) {
@@ -3075,12 +3081,12 @@ function renderJournal() {
                 if (working) relatedLabel = `<span class="journal-tag">✧ ${working.name}</span>`;
             }
         }
-        
+
         // Parse tags
-        const tagsHtml = entry.tags ? entry.tags.split(',').map(t => t.trim()).filter(t => t).map(t => 
+        const tagsHtml = entry.tags ? entry.tags.split(',').map(t => t.trim()).filter(t => t).map(t =>
             `<span class="journal-tag" onclick="document.getElementById('journalSearch').value='${t}'; filterJournal();">#${t}</span>`
         ).join('') : '';
-        
+
         el.innerHTML = `
             <div class="card-header" style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
@@ -3135,17 +3141,17 @@ window.toggleMasteryInput = (type) => {
 window.saveMastery = () => {
     const name = document.getElementById('masteryName').value;
     if (!name) return showNotification('Please enter a goal name', 'error');
-    
+
     const type = document.querySelector('input[name="masteryType"]:checked').value;
     let goal;
-    
+
     if (document.getElementById('masteryGoal').value === 'custom') {
         goal = parseInt(document.getElementById('customHours').value);
         if (!goal || goal <= 0) return showNotification('Please enter a valid custom goal number', 'error');
     } else {
         goal = parseInt(document.getElementById('masteryGoal').value);
     }
-        
+
     const item = {
         id: Date.now(),
         name,
@@ -3154,7 +3160,7 @@ window.saveMastery = () => {
         currentHours: 0,
         color: document.querySelector('input[name="masteryColor"]:checked').value
     };
-    
+
     AppState.mastery.push(item);
     saveState();
     renderMastery();
@@ -3168,32 +3174,32 @@ function renderMastery() {
     if (!grid) return;
     grid.innerHTML = '';
     if (completedGrid) completedGrid.innerHTML = '';
-    
+
     const activeMastery = AppState.mastery.filter(m => m.currentHours < m.goalHours);
     const completedMastery = AppState.mastery.filter(m => m.currentHours >= m.goalHours);
-    
+
     if (activeMastery.length === 0) {
         if (document.getElementById('noMastery')) document.getElementById('noMastery').style.display = 'flex';
     } else {
         if (document.getElementById('noMastery')) document.getElementById('noMastery').style.display = 'none';
     }
-    
+
     // Show/hide completed section
     const completedSection = document.getElementById('masteryCompletedSection');
     if (completedSection) {
         completedSection.style.display = completedMastery.length > 0 ? 'block' : 'none';
     }
-    
+
     activeMastery.forEach((m, index) => {
         const el = document.createElement('div');
         el.className = 'mastery-card-enhanced';
         el.style.setProperty('--card-color', m.color);
         el.draggable = true;
         el.dataset.id = m.id;
-        
+
         const pct = Math.min((m.currentHours / m.goalHours) * 100, 100);
         const unitLabel = m.type === 'reps' ? 'Reps' : 'Hours';
-        
+
         el.innerHTML = `
             <div class="drag-handle" style="position:absolute; top:5px; left:50%; transform:translateX(-50%);">⋮⋮</div>
             <div class="mastery-header">
@@ -3212,7 +3218,7 @@ function renderMastery() {
                 <button class="btn-sm btn-danger" style="width:40px;" onclick="deleteMastery(${m.id})">×</button>
             </div>
         `;
-        
+
         // Drag events
         el.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', m.id);
@@ -3239,20 +3245,20 @@ function renderMastery() {
                 showNotification('Mastery order updated', 'normal');
             }
         });
-        
+
         grid.appendChild(el);
     });
-    
+
     // Render completed mastery
     completedMastery.forEach(m => {
         if (!completedGrid) return;
         const el = document.createElement('div');
         el.className = 'mastery-card-enhanced completed';
         el.style.setProperty('--card-color', m.color);
-        
+
         const pct = 100;
         const unitLabel = m.type === 'reps' ? 'Reps' : 'Hours';
-        
+
         el.innerHTML = `
             <div style="position:absolute; top:10px; right:10px; font-size:1.5rem;">🏆</div>
             <div class="mastery-header">
@@ -3276,22 +3282,22 @@ function renderMastery() {
 window.editMastery = (id) => {
     const m = AppState.mastery.find(x => x.id === id);
     if (!m) return;
-    
+
     // Reuse the creation modal but populate it
     const modal = document.getElementById('masteryModal');
     if (!modal) return;
-    
+
     document.getElementById('masteryName').value = m.name;
-    
+
     // Handle Type Radio
     const typeRadio = document.querySelector(`input[name="masteryType"][value="${m.type}"]`);
     if (typeRadio) typeRadio.checked = true;
-    
+
     // Handle Goal
     const goalSelect = document.getElementById('masteryGoal');
     const customInput = document.getElementById('customHours');
     const customGroup = document.getElementById('customHoursGroup');
-    
+
     // Check if goal matches one of the presets
     const preset = Array.from(goalSelect.options).find(opt => opt.value == m.goalHours);
     if (preset && preset.value !== 'custom') {
@@ -3302,46 +3308,46 @@ window.editMastery = (id) => {
         customGroup.style.display = 'block';
         customInput.value = m.goalHours;
     }
-    
+
     // Handle Color
     const colorRadio = document.querySelector(`input[name="masteryColor"][value="${m.color}"]`);
     if (colorRadio) colorRadio.checked = true;
-    
+
     // Change Save Button to Update
     const saveBtn = modal.querySelector('.btn-gold');
     saveBtn.textContent = 'Update Goal';
     saveBtn.onclick = () => updateMastery(id);
-    
+
     window.openModal('masteryModal');
 };
 
 window.updateMastery = (id) => {
     const m = AppState.mastery.find(x => x.id === id);
     if (!m) return;
-    
+
     const name = document.getElementById('masteryName').value;
     if (!name) return showNotification('Please enter a goal name', 'error');
-    
+
     const type = document.querySelector('input[name="masteryType"]:checked').value;
     let goal;
-    
+
     if (document.getElementById('masteryGoal').value === 'custom') {
         goal = parseInt(document.getElementById('customHours').value);
         if (!goal || goal <= 0) return showNotification('Please enter a valid custom goal number', 'error');
     } else {
         goal = parseInt(document.getElementById('masteryGoal').value);
     }
-        
+
     m.name = name;
     m.type = type;
     m.goalHours = goal;
     m.color = document.querySelector('input[name="masteryColor"]:checked').value;
-    
+
     saveState();
     renderMastery();
     window.closeModal('masteryModal');
     showNotification('Mastery goal updated!', 'gold');
-    
+
     // Reset button for next time
     const modal = document.getElementById('masteryModal');
     const saveBtn = modal.querySelector('.btn-gold');
@@ -3365,7 +3371,7 @@ window.openMasteryLogModal = (id) => {
     const modalId = 'masteryLogModal';
     let modal = document.getElementById(modalId);
     const unitLabel = m.type === 'reps' ? 'Reps' : 'Time';
-    
+
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
@@ -3414,10 +3420,10 @@ window.openMasteryLogModal = (id) => {
         `;
         document.body.appendChild(modal);
     }
-    
+
     const nameEl = modal.querySelector('#masteryLogName');
     if (nameEl) nameEl.textContent = m.name;
-    
+
     // Show correct input group
     const timeGroup = modal.querySelector('#masteryTimeInputGroup');
     const repsGroup = modal.querySelector('#masteryRepsInputGroup');
@@ -3434,10 +3440,10 @@ window.openMasteryLogModal = (id) => {
         const repsInput = modal.querySelector('#masteryLogReps');
         if (repsInput) repsInput.value = 1;
     }
-    
+
     const notesEl = modal.querySelector('#masteryLogNotes');
     if (notesEl) notesEl.value = '';
-    
+
     // Re-bind click event to avoid multiple listeners
     const confirmBtn = modal.querySelector('#confirmMasteryLog');
     if (confirmBtn) {
@@ -3453,14 +3459,14 @@ window.openMasteryLogModal = (id) => {
                 const repsInput = document.getElementById('masteryLogReps');
                 amount = repsInput ? parseFloat(repsInput.value) || 0 : 0;
             }
-            
+
             if (amount !== 0) {
                 logMasterySession(id, amount);
                 window.closeModal(modalId);
             }
         };
     }
-    
+
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
 };
@@ -3469,13 +3475,13 @@ window.quickAddTime = (minutes) => {
     const hoursInput = document.getElementById('masteryLogHours');
     const minutesInput = document.getElementById('masteryLogMinutes');
     if (!hoursInput || !minutesInput) return;
-    
+
     let totalMinutes = (parseInt(hoursInput.value) || 0) * 60 + (parseInt(minutesInput.value) || 0);
     totalMinutes += minutes;
-    
+
     const hours = Math.floor(totalMinutes / 60);
     const mins = totalMinutes % 60;
-    
+
     hoursInput.value = hours;
     minutesInput.value = mins;
 };
@@ -3486,14 +3492,14 @@ window.logMasterySession = (id, amount) => {
         m.currentHours += amount;
         saveState();
         renderMastery();
-        
+
         let xp = 0;
         if (m.type === 'reps') {
             xp = Math.round(amount * 0.5); // 1 rep = 0.5 XP (example)
         } else {
             xp = Math.round(amount * 60); // 1 hour = 60 XP
         }
-        
+
         addXP(xp);
         logActivity('working', `Mastery: ${m.name} (${amount} ${m.type === 'reps' ? 'reps' : 'hrs'})`, xp);
         showNotification(`Logged ${amount} for ${m.name}`, 'gold');
@@ -3505,12 +3511,12 @@ let currentCalendarDate = new Date();
 
 function initCalendar() {
     renderCalendar();
-    
+
     document.getElementById('calendarPrev').onclick = () => {
         currentCalendarDate.setMonth(currentCalendarDate.getMonth() - 1);
         renderCalendar();
     };
-    
+
     document.getElementById('calendarNext').onclick = () => {
         currentCalendarDate.setMonth(currentCalendarDate.getMonth() + 1);
         renderCalendar();
@@ -3521,31 +3527,31 @@ function renderCalendar() {
     const grid = document.getElementById('calendarDays');
     const monthLabel = document.getElementById('calendarMonth');
     if (!grid || !monthLabel) return;
-    
+
     grid.innerHTML = '';
-    
+
     const year = currentCalendarDate.getFullYear();
     const month = currentCalendarDate.getMonth();
-    
+
     monthLabel.textContent = new Date(year, month, 1).toLocaleDateString('default', { month: 'long', year: 'numeric' });
-    
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     // Empty slots for previous month
     for (let i = 0; i < firstDay; i++) {
         const empty = document.createElement('div');
         empty.className = 'calendar-day empty';
         grid.appendChild(empty);
     }
-    
+
     // Days
     for (let i = 1; i <= daysInMonth; i++) {
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
         const day = document.createElement('div');
         day.className = 'calendar-day';
         day.textContent = i;
-        
+
         // Check for events (Schedule + Journal + Recurring + Completed Flows)
         const d = new Date(year, month, i, 12, 0, 0);
         const { recurring, oneOffs } = getFlowsForDate(d);
@@ -3556,10 +3562,10 @@ function renderCalendar() {
             }
             return false;
         });
-        
+
         // Check for completed flows on this date
         const completedFlows = recurring.filter(f => f.completedDates && f.completedDates.includes(dateStr));
-        
+
         // Create indicators container
         const indicatorsContainer = document.createElement('div');
         indicatorsContainer.style.display = 'flex';
@@ -3567,7 +3573,7 @@ function renderCalendar() {
         indicatorsContainer.style.justifyContent = 'center';
         indicatorsContainer.style.marginTop = '5px';
         indicatorsContainer.style.minHeight = '6px';
-        
+
         // Add indicators based on what's present
         if (completedFlows.length > 0) {
             const indicator = document.createElement('div');
@@ -3576,7 +3582,7 @@ function renderCalendar() {
             indicator.title = `${completedFlows.length} completed flow(s)`;
             indicatorsContainer.appendChild(indicator);
         }
-        
+
         if (recurring.length > 0 || oneOffs.length > 0) {
             const indicator = document.createElement('div');
             indicator.className = 'day-indicator';
@@ -3584,7 +3590,7 @@ function renderCalendar() {
             indicator.title = `${recurring.length + oneOffs.length} scheduled flow(s)`;
             indicatorsContainer.appendChild(indicator);
         }
-        
+
         if (journalEntries.length > 0) {
             const indicator = document.createElement('div');
             indicator.className = 'day-indicator';
@@ -3592,7 +3598,7 @@ function renderCalendar() {
             indicator.title = `${journalEntries.length} journal entry(s)`;
             indicatorsContainer.appendChild(indicator);
         }
-        
+
         if (workingEntries.length > 0) {
             const indicator = document.createElement('div');
             indicator.className = 'day-indicator';
@@ -3600,18 +3606,18 @@ function renderCalendar() {
             indicator.title = `${workingEntries.length} working session(s)`;
             indicatorsContainer.appendChild(indicator);
         }
-        
+
         day.appendChild(indicatorsContainer);
-        
+
         day.onclick = () => selectCalendarDate(dateStr);
-        
+
         // Highlight today
         const todayStr = new Date().toISOString().split('T')[0];
         if (dateStr === todayStr) {
             day.style.borderColor = 'var(--gold-primary)';
             day.style.background = 'rgba(212, 175, 55, 0.1)';
         }
-        
+
         grid.appendChild(day);
     }
 }
@@ -3620,23 +3626,23 @@ window.selectCalendarDate = (dateStr) => {
     const detailTitle = document.getElementById('selectedDateTitle');
     const eventsList = document.getElementById('dayEvents');
     const quickAdd = document.getElementById('calendarQuickAdd');
-    
+
     if (detailTitle) detailTitle.textContent = new Date(dateStr).toLocaleDateString('default', { weekday: 'long', month: 'long', day: 'numeric' });
     if (quickAdd) quickAdd.style.display = 'block';
-    
+
     // Store selected date for quick add
     window.selectedCalendarDate = dateStr;
-    
+
     if (eventsList) {
         eventsList.innerHTML = '';
-        
+
         // Fix date parsing for getFlowsForDate
         const parts = dateStr.split('-');
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 12, 0, 0);
-        
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]), 12, 0, 0);
+
         const { recurring, oneOffs } = getFlowsForDate(d);
         const journalEntries = (AppState.journal || []).filter(j => j.date.startsWith(dateStr));
-        
+
         if (recurring.length === 0 && oneOffs.length === 0 && journalEntries.length === 0) {
             eventsList.innerHTML = '<p class="text-muted">No events or entries.</p>';
         } else {
@@ -3661,7 +3667,7 @@ window.selectCalendarDate = (dateStr) => {
                 // Find the flow by ID if it exists
                 const flowExists = e.flowId && AppState.flows.find(f => f.id === e.flowId);
                 const flowIndex = flowExists ? AppState.flows.findIndex(f => f.id === e.flowId) : -1;
-                
+
                 const item = document.createElement('div');
                 item.className = 'activity-item';
                 item.innerHTML = `
@@ -3677,7 +3683,7 @@ window.selectCalendarDate = (dateStr) => {
                 `;
                 eventsList.appendChild(item);
             });
-            
+
             // Render Journal Entries
             journalEntries.forEach(j => {
                 const item = document.createElement('div');
@@ -3707,7 +3713,7 @@ window.viewJournalEntry = (id) => {
 window.quickScheduleFlow = () => {
     const modalId = 'scheduleFlowModal';
     let modal = document.getElementById(modalId);
-    
+
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
@@ -3741,26 +3747,26 @@ window.quickScheduleFlow = () => {
         `;
         document.body.appendChild(modal);
     }
-    
+
     // Populate Flows
     const select = modal.querySelector('#scheduleFlowSelect');
     if (select) {
         select.innerHTML = AppState.flows.map(f => `<option value="${f.id}">${f.title}</option>`).join('');
     }
-    
+
     // Set Date/Time
     const dateInput = modal.querySelector('#scheduleDate');
     const timeInput = modal.querySelector('#scheduleTime');
-    
+
     if (window.selectedCalendarDate) {
         dateInput.value = window.selectedCalendarDate;
     } else {
         dateInput.value = new Date().toISOString().split('T')[0];
     }
-    
+
     const now = new Date();
-    timeInput.value = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-    
+    timeInput.value = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
     window.openModal(modalId);
 };
 
@@ -3768,12 +3774,12 @@ window.saveScheduledFlow = () => {
     const flowId = document.getElementById('scheduleFlowSelect').value;
     const date = document.getElementById('scheduleDate').value;
     const time = document.getElementById('scheduleTime').value;
-    
+
     if (!flowId || !date || !time) return showNotification('All fields required', 'error');
-    
+
     const flow = AppState.flows.find(f => f.id == flowId);
     if (!flow) return;
-    
+
     const event = {
         id: Date.now(),
         type: 'flow',
@@ -3782,16 +3788,16 @@ window.saveScheduledFlow = () => {
         date,
         time
     };
-    
+
     if (!AppState.schedule) AppState.schedule = [];
     AppState.schedule.push(event);
     saveState();
-    
+
     renderCalendar();
     if (window.selectedCalendarDate === date) {
         selectCalendarDate(date); // Refresh sidebar
     }
-    
+
     window.closeModal('scheduleFlowModal');
     showNotification('Flow Scheduled', 'gold');
 };
@@ -3834,32 +3840,32 @@ function initSettings() {
 window.searchLocation = async () => {
     const query = document.getElementById('locationSearch').value;
     if (!query) return showNotification("Please enter a city name", "error");
-    
+
     const btn = document.querySelector('button[onclick="searchLocation()"]');
     const originalText = btn.textContent;
     btn.textContent = "Searching...";
     btn.disabled = true;
-    
+
     try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
         const data = await res.json();
-        
+
         if (data && data.length > 0) {
             const place = data[0];
             const lat = parseFloat(place.lat);
             const lon = parseFloat(place.lon);
             const name = place.display_name;
-            
+
             AppState.settings.location = { lat, long: lon, name };
             saveState();
-            
+
             const locResult = document.getElementById('locationResult');
             locResult.style.display = 'block';
             locResult.innerHTML = `
                 <div>Selected: <strong>${name}</strong></div>
                 <div style="font-size:0.8rem; color:var(--text-muted)">Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}</div>
             `;
-            
+
             showNotification("Location updated!", "gold");
             initAstro(); // Recalculate planetary hours immediately
         } else {
@@ -3879,7 +3885,7 @@ window.searchLocation = async () => {
 window.exportAllData = () => {
     // Create a deep copy to avoid modifying the actual AppState
     const exportData = JSON.parse(JSON.stringify(AppState));
-    
+
     // Remove sensitive location data
     if (exportData.settings && exportData.settings.location) {
         delete exportData.settings.location;
@@ -3897,7 +3903,7 @@ window.exportAllData = () => {
 window.importData = (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
+
     const reader = new FileReader();
     reader.onload = (e) => {
         try {
@@ -3921,7 +3927,7 @@ window.importData = (event) => {
 };
 
 // Flow Import Handler - must be on window for onclick to work
-window.triggerFlowImport = function() {
+window.triggerFlowImport = function () {
     console.log('Import button clicked');
     const input = document.createElement('input');
     input.type = 'file';
@@ -3933,41 +3939,77 @@ window.triggerFlowImport = function() {
             console.log('No file');
             return;
         }
-        
+
         console.log('Reading file:', file.name);
         const reader = new FileReader();
-        
+
         reader.onerror = (err) => {
             console.error('FileReader error:', err);
             showNotification("Error reading file", "error");
         };
-        
+
         reader.onload = (evt) => {
             console.log('File content loaded');
             try {
-                const flow = JSON.parse(evt.target.result);
-                console.log('Parsed flow:', flow);
-                
-                if (flow.title && flow.steps && Array.isArray(flow.steps)) {
-                    flow.id = Date.now();
-                    flow.created = new Date().toISOString();
-                    flow.completedDates = flow.completedDates || [];
-                    
-                    AppState.flows.push(flow);
+                const data = JSON.parse(evt.target.result);
+                console.log('Parsed data:', data);
+
+                let flowsToImport = [];
+
+                // Check if it's a wrapped export format (from multi-flow export)
+                if (data.type === 'arcana_flows_export' && Array.isArray(data.flows)) {
+                    flowsToImport = data.flows;
+                    console.log('Detected wrapped export format with', flowsToImport.length, 'flows');
+                }
+                // Check if it's a plain array of flows
+                else if (Array.isArray(data)) {
+                    flowsToImport = data;
+                    console.log('Detected plain array format with', flowsToImport.length, 'flows');
+                }
+                // Single flow object
+                else if (data.title && data.steps && Array.isArray(data.steps)) {
+                    flowsToImport = [data];
+                    console.log('Detected single flow format');
+                }
+                else {
+                    console.log('Invalid format - not a flow, array, or wrapped export');
+                    showNotification("Invalid flow file format. Expected a flow object, array of flows, or exported flows file.", "error");
+                    return;
+                }
+
+                // Import the flows
+                let imported = 0;
+                let skipped = 0;
+                flowsToImport.forEach((flow, idx) => {
+                    if (flow.title && flow.steps && Array.isArray(flow.steps)) {
+                        flow.id = Date.now() + imported;
+                        flow.created = new Date().toISOString();
+                        flow.completedDates = flow.completedDates || [];
+                        AppState.flows.push(flow);
+                        imported++;
+                    } else {
+                        console.log(`Skipping invalid flow at index ${idx}`);
+                        skipped++;
+                    }
+                });
+
+                if (imported > 0) {
                     saveState();
                     renderFlows();
-                    console.log('Flow imported!');
-                    showNotification(`Flow "${flow.title}" imported successfully`, "gold");
+                    console.log(`${imported} flow(s) imported!`);
+                    const msg = skipped > 0
+                        ? `${imported} flow(s) imported (${skipped} skipped - invalid format)`
+                        : `${imported} flow(s) imported successfully`;
+                    showNotification(msg, "gold");
                 } else {
-                    console.log('Invalid format');
-                    showNotification("Invalid flow file format", "error");
+                    showNotification("No valid flows found in file", "error");
                 }
             } catch (err) {
                 console.error('Parse error:', err);
                 showNotification("Error parsing file: " + err.message, "error");
             }
         };
-        
+
         reader.readAsText(file);
     };
     input.click();
@@ -3979,29 +4021,29 @@ window.importFlow = (event) => {
         console.log('No file selected');
         return;
     }
-    
+
     console.log('Importing file:', file.name);
-    
+
     const reader = new FileReader();
-    
+
     reader.onerror = (err) => {
         console.error('FileReader error:', err);
         showNotification("Error reading file", "error");
     };
-    
+
     reader.onload = (e) => {
         console.log('File loaded, parsing JSON...');
         try {
             const flow = JSON.parse(e.target.result);
             console.log('Parsed flow:', flow);
-            
+
             // Basic validation
             if (flow.title && flow.steps && Array.isArray(flow.steps)) {
                 // Generate new ID to avoid conflicts
                 flow.id = Date.now();
                 flow.created = new Date().toISOString();
                 flow.completedDates = flow.completedDates || [];
-                
+
                 AppState.flows.push(flow);
                 saveState();
                 renderFlows();
@@ -4016,7 +4058,7 @@ window.importFlow = (event) => {
             console.error('Parse error:', err);
         }
     };
-    
+
     reader.readAsText(file);
     event.target.value = ''; // Reset input
 };
@@ -4025,7 +4067,7 @@ window.openExportFlowModal = () => {
     // Create a dynamic modal for multi-flow selection
     const modalId = 'exportFlowModal';
     let modal = document.getElementById(modalId);
-    
+
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
@@ -4055,11 +4097,11 @@ window.openExportFlowModal = () => {
         `;
         document.body.appendChild(modal);
     }
-    
+
     const list = modal.querySelector('#exportFlowList');
     if (list) {
         list.innerHTML = '';
-        
+
         if (AppState.flows.length === 0) {
             list.innerHTML = '<div class="text-muted" style="padding:20px; text-align:center;">No flows available.</div>';
         } else {
@@ -4067,7 +4109,7 @@ window.openExportFlowModal = () => {
                 const item = document.createElement('div');
                 item.className = 'list-item';
                 item.style.cssText = 'display:flex; align-items:center; gap:12px; padding:12px; border-bottom:1px solid rgba(255,255,255,0.1); cursor:pointer;';
-                
+
                 item.innerHTML = `
                     <input type="checkbox" class="flow-export-checkbox" data-flow-id="${flow.id}" id="export-flow-${flow.id}">
                     <label for="export-flow-${flow.id}" style="flex:1; cursor:pointer; display:flex; justify-content:space-between;">
@@ -4075,7 +4117,7 @@ window.openExportFlowModal = () => {
                         <span style="color:var(--text-muted); font-size:0.85rem;">${flow.steps.length} steps</span>
                     </label>
                 `;
-                
+
                 // Click anywhere to toggle
                 item.onclick = (e) => {
                     if (e.target.tagName !== 'INPUT') {
@@ -4083,15 +4125,15 @@ window.openExportFlowModal = () => {
                         checkbox.checked = !checkbox.checked;
                     }
                 };
-                
+
                 list.appendChild(item);
             });
         }
     }
-    
+
     // Reset select all
     document.getElementById('exportSelectAll').checked = false;
-    
+
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
 };
@@ -4103,21 +4145,21 @@ window.toggleAllFlowsExport = (checked) => {
 window.exportSelectedFlows = () => {
     const selectedIds = Array.from(document.querySelectorAll('.flow-export-checkbox:checked'))
         .map(cb => parseInt(cb.dataset.flowId));
-    
+
     if (selectedIds.length === 0) {
         showNotification('Please select at least one flow', 'error');
         return;
     }
-    
+
     const selectedFlows = AppState.flows.filter(f => selectedIds.includes(f.id));
-    
+
     // Check for images
     const hasImages = selectedFlows.some(f => f.image || f.steps.some(s => s.image));
-    
+
     const doExport = () => {
         let exportData;
         let filename;
-        
+
         if (selectedFlows.length === 1) {
             // Single flow export
             exportData = selectedFlows[0];
@@ -4132,7 +4174,7 @@ window.exportSelectedFlows = () => {
             };
             filename = `arcana_flows_${selectedFlows.length}_exported.json`;
         }
-        
+
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData, null, 2));
         const downloadAnchorNode = document.createElement('a');
         downloadAnchorNode.setAttribute("href", dataStr);
@@ -4140,11 +4182,11 @@ window.exportSelectedFlows = () => {
         document.body.appendChild(downloadAnchorNode);
         downloadAnchorNode.click();
         downloadAnchorNode.remove();
-        
+
         window.closeModal('exportFlowModal');
         showNotification(`${selectedFlows.length} flow(s) exported!`, 'gold');
     };
-    
+
     if (hasImages) {
         showConfirmModal('Export Notice', 'Flow images are not included in exports to keep file sizes small. Continue?', doExport);
     } else {
@@ -4160,7 +4202,7 @@ window.triggerSelectiveImport = () => {
     input.onchange = (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        
+
         const reader = new FileReader();
         reader.onload = (evt) => {
             try {
@@ -4178,21 +4220,21 @@ window.triggerSelectiveImport = () => {
 function openSelectiveImportModal(data) {
     const modalId = 'selectiveImportModal';
     let modal = document.getElementById(modalId);
-    
+
     // Detect data type
     const isSingleFlow = data.title && data.steps && Array.isArray(data.steps);
     const isMultiFlowExport = data.type === 'arcana_flows_export' && data.flows;
     const isFullBackup = data.user && (data.flows || data.workings || data.tasks);
-    
+
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
         modal.className = 'modal';
         document.body.appendChild(modal);
     }
-    
+
     let contentHtml = '';
-    
+
     if (isSingleFlow) {
         // Single flow import
         contentHtml = `
@@ -4203,7 +4245,7 @@ function openSelectiveImportModal(data) {
                 <p style="font-size:0.85rem; margin-top:10px;">${data.steps.length} steps</p>
             </div>
         `;
-        
+
         modal.innerHTML = `
             <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
             <div class="modal-content">
@@ -4219,7 +4261,7 @@ function openSelectiveImportModal(data) {
             </div>
         `;
         window.importTempData = data;
-        
+
     } else if (isMultiFlowExport) {
         // Multi-flow export import
         contentHtml = `
@@ -4242,7 +4284,7 @@ function openSelectiveImportModal(data) {
                 `).join('')}
             </div>
         `;
-        
+
         modal.innerHTML = `
             <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
             <div class="modal-content">
@@ -4258,7 +4300,7 @@ function openSelectiveImportModal(data) {
             </div>
         `;
         window.importTempData = data;
-        
+
     } else if (isFullBackup) {
         // Full backup - selective import
         const counts = {
@@ -4268,7 +4310,7 @@ function openSelectiveImportModal(data) {
             journal: data.journal?.length || 0,
             mastery: data.mastery?.length || 0
         };
-        
+
         contentHtml = `
             <p style="margin-bottom:15px;">This backup contains:</p>
             <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
@@ -4299,7 +4341,7 @@ function openSelectiveImportModal(data) {
             </div>
             <p style="color:var(--text-muted); font-size:0.85rem;">⚠️ Importing will merge with existing data. Duplicates may be created.</p>
         `;
-        
+
         modal.innerHTML = `
             <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
             <div class="modal-content">
@@ -4315,12 +4357,12 @@ function openSelectiveImportModal(data) {
             </div>
         `;
         window.importTempData = data;
-        
+
     } else {
         showNotification('Unrecognized file format', 'error');
         return;
     }
-    
+
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
 }
@@ -4344,12 +4386,12 @@ window.importSelectedFlowsFromExport = () => {
     const data = window.importTempData;
     const selectedIndices = Array.from(document.querySelectorAll('.flow-import-checkbox:checked'))
         .map(cb => parseInt(cb.dataset.flowIndex));
-    
+
     if (selectedIndices.length === 0) {
         showNotification('Please select at least one flow', 'error');
         return;
     }
-    
+
     let count = 0;
     selectedIndices.forEach(idx => {
         const flow = { ...data.flows[idx] };
@@ -4359,7 +4401,7 @@ window.importSelectedFlowsFromExport = () => {
         AppState.flows.push(flow);
         count++;
     });
-    
+
     saveState();
     renderFlows();
     window.closeModal('selectiveImportModal');
@@ -4369,7 +4411,7 @@ window.importSelectedFlowsFromExport = () => {
 window.importSelectiveBackup = () => {
     const data = window.importTempData;
     let importedCount = { flows: 0, workings: 0, tasks: 0, journal: 0, mastery: 0 };
-    
+
     // Import flows
     if (document.getElementById('import-flows')?.checked && data.flows) {
         data.flows.forEach(flow => {
@@ -4379,7 +4421,7 @@ window.importSelectiveBackup = () => {
             importedCount.flows++;
         });
     }
-    
+
     // Import workings
     if (document.getElementById('import-workings')?.checked && data.workings) {
         data.workings.forEach(w => {
@@ -4388,7 +4430,7 @@ window.importSelectiveBackup = () => {
             importedCount.workings++;
         });
     }
-    
+
     // Import tasks
     if (document.getElementById('import-tasks')?.checked && data.tasks) {
         data.tasks.forEach(t => {
@@ -4397,7 +4439,7 @@ window.importSelectiveBackup = () => {
             importedCount.tasks++;
         });
     }
-    
+
     // Import journal
     if (document.getElementById('import-journal')?.checked && data.journal) {
         data.journal.forEach(j => {
@@ -4406,7 +4448,7 @@ window.importSelectiveBackup = () => {
             importedCount.journal++;
         });
     }
-    
+
     // Import mastery
     if (document.getElementById('import-mastery')?.checked && data.mastery) {
         data.mastery.forEach(m => {
@@ -4415,7 +4457,7 @@ window.importSelectiveBackup = () => {
             importedCount.mastery++;
         });
     }
-    
+
     // Import settings
     if (document.getElementById('import-settings')?.checked) {
         if (data.user) {
@@ -4425,18 +4467,18 @@ window.importSelectiveBackup = () => {
             AppState.settings = { ...AppState.settings, ...data.settings };
         }
     }
-    
+
     saveState();
-    
+
     // Refresh all views
     renderFlows();
     initWorkings();
     renderTasks();
     renderJournal();
     renderMastery();
-    
+
     window.closeModal('selectiveImportModal');
-    
+
     const total = Object.values(importedCount).reduce((a, b) => a + b, 0);
     showNotification(`Import complete! ${total} items imported.`, 'gold');
 };
@@ -4458,12 +4500,12 @@ async function fetchPlanetaryHours(date, lat, lng) {
     // Format date as YYYY-MM-DD
     const dateStr = date.toISOString().split('T')[0];
     const cacheKey = `${dateStr}_${lat.toFixed(4)}_${lng.toFixed(4)}`;
-    
+
     // Return cached result if available
     if (planetaryHoursCache[cacheKey]) {
         return planetaryHoursCache[cacheKey];
     }
-    
+
     try {
         // Use https if page is served over https, otherwise http
         const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
@@ -4471,14 +4513,14 @@ async function fetchPlanetaryHours(date, lat, lng) {
             cache: 'no-cache' // Prevent caching issues
         });
         if (!response.ok) throw new Error(`API returned ${response.status}`);
-        
+
         const data = await response.json();
-        
+
         // Cache the result
         planetaryHoursCache[cacheKey] = data;
-        
+
         console.log('Planetary Hours API success:', data);
-        
+
         return data;
     } catch (error) {
         console.warn('Planetary Hours API failed:', error);
@@ -4500,11 +4542,11 @@ function initAstro() {
     const synodic = 29.53058867;
     const phaseStep = synodic / 8;
     // Offset by half a step to center the phases
-    const phaseIdx = Math.floor((moonAge + (phaseStep/2)) / phaseStep) % 8;
-    
+    const phaseIdx = Math.floor((moonAge + (phaseStep / 2)) / phaseStep) % 8;
+
     const phases = ['🌑 New Moon', '🌒 Waxing Crescent', '🌓 First Quarter', '🌔 Waxing Gibbous', '🌕 Full Moon', '🌖 Waning Gibbous', '🌗 Last Quarter', '🌘 Waning Crescent'];
     document.getElementById('moonPhase').textContent = phases[phaseIdx];
-    
+
     // Planetary Hour Calculation
     updatePlanetaryHour();
 }
@@ -4512,14 +4554,14 @@ function initAstro() {
 async function updatePlanetaryHour() {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
-    
+
     const planetNames = ['☉ Sun', '☽ Moon', '♂ Mars', '☿ Mercury', '♃ Jupiter', '♀ Venus', '♄ Saturn'];
     // Chaldean Order for planetary hours: Saturn, Jupiter, Mars, Sun, Venus, Mercury, Moon
-    const chaldeanOrder = [6, 4, 2, 0, 5, 3, 1]; 
-    
+    const chaldeanOrder = [6, 4, 2, 0, 5, 3, 1];
+
     // Day Rulers: Sunday=Sun, Monday=Moon, Tuesday=Mars, Wednesday=Mercury, Thursday=Jupiter, Friday=Venus, Saturday=Saturn
-    const dayRulers = [0, 1, 2, 3, 4, 5, 6]; 
-    
+    const dayRulers = [0, 1, 2, 3, 4, 5, 6];
+
     let currentPlanetIndex = 0;
     let isDay = true;
     let useAPI = false;
@@ -4528,18 +4570,18 @@ async function updatePlanetaryHour() {
     if (AppState.settings.location && AppState.settings.location.lat) {
         const { lat, long } = AppState.settings.location;
         const apiData = await fetchPlanetaryHours(now, lat, long);
-        
+
         if (apiData && apiData.planetary_hours) {
             // API succeeded - use its data
             useAPI = true;
-            
+
             // API returns current planetary hour info
             const currentHour = apiData.planetary_hours.find(h => {
                 const hourStart = new Date(h.start);
                 const hourEnd = new Date(h.end);
                 return now >= hourStart && now < hourEnd;
             });
-            
+
             if (currentHour) {
                 // Map API planet name to our index
                 const planetMap = {
@@ -4552,7 +4594,7 @@ async function updatePlanetaryHour() {
             }
         }
     }
-    
+
     // Fallback to manual calculation if API failed or no location
     if (!useAPI) {
         console.log('Using manual calculation for planetary hours');
@@ -4560,10 +4602,10 @@ async function updatePlanetaryHour() {
             // Accurate Calculation with manual sunrise/sunset
             const { lat, long } = AppState.settings.location;
             const sunTimes = getSunTimes(now, lat, long);
-            
+
             if (sunTimes) {
                 const { sunrise, sunset } = sunTimes;
-                
+
                 // Check if before sunrise (belongs to previous day's night sequence)
                 if (now < sunrise) {
                     // It's technically "yesterday" in magickal terms (night of previous day)
@@ -4571,44 +4613,44 @@ async function updatePlanetaryHour() {
                     yesterday.setDate(yesterday.getDate() - 1);
                     const prevDayOfWeek = yesterday.getDay();
                     const prevDayRuler = dayRulers[prevDayOfWeek];
-                    
+
                     const prevSunTimes = getSunTimes(yesterday, lat, long);
                     const prevSunset = prevSunTimes.sunset;
-                    
+
                     const nightDuration = sunrise.getTime() - prevSunset.getTime();
                     const nightHourLength = nightDuration / 12;
                     const timeSinceSunset = now.getTime() - prevSunset.getTime();
                     const currentNightHour = Math.floor(timeSinceSunset / nightHourLength); // 0-11
-                    
+
                     const startIdx = chaldeanOrder.indexOf(prevDayRuler);
                     const offset = 12 + currentNightHour;
                     currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
                     isDay = false;
-                    
+
                 } else if (now >= sunrise && now < sunset) {
                     // Daytime
                     const dayDuration = sunset.getTime() - sunrise.getTime();
                     const dayHourLength = dayDuration / 12;
                     const timeSinceSunrise = now.getTime() - sunrise.getTime();
                     const currentDayHour = Math.floor(timeSinceSunrise / dayHourLength); // 0-11
-                    
+
                     const currentDayRuler = dayRulers[dayOfWeek];
                     const startIdx = chaldeanOrder.indexOf(currentDayRuler);
                     currentPlanetIndex = chaldeanOrder[(startIdx + currentDayHour) % 7];
                     isDay = true;
-                    
+
                 } else {
                     // After sunset (Night of today)
                     const nextDay = new Date(now);
                     nextDay.setDate(nextDay.getDate() + 1);
                     const nextSunTimes = getSunTimes(nextDay, lat, long);
                     const nextSunrise = nextSunTimes.sunrise;
-                    
+
                     const nightDuration = nextSunrise.getTime() - sunset.getTime();
                     const nightHourLength = nightDuration / 12;
                     const timeSinceSunset = now.getTime() - sunset.getTime();
                     const currentNightHour = Math.floor(timeSinceSunset / nightHourLength); // 0-11
-                    
+
                     const currentDayRuler = dayRulers[dayOfWeek];
                     const startIdx = chaldeanOrder.indexOf(currentDayRuler);
                     const offset = 12 + currentNightHour;
@@ -4619,15 +4661,15 @@ async function updatePlanetaryHour() {
         } else {
             // Fallback: Simple fixed hours (6am-6pm day, 6pm-6am night)
             const hour = now.getHours();
-            
+
             if (hour < 6) {
-                 // Night of previous day
-                 const prevDay = (dayOfWeek + 6) % 7;
-                 const prevRuler = dayRulers[prevDay];
-                 const startIdx = chaldeanOrder.indexOf(prevRuler);
-                 const offset = 18 + hour; // e.g. 2am = 20th hour (12 day + 6 night + 2)
-                 currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
-                 isDay = false;
+                // Night of previous day
+                const prevDay = (dayOfWeek + 6) % 7;
+                const prevRuler = dayRulers[prevDay];
+                const startIdx = chaldeanOrder.indexOf(prevRuler);
+                const offset = 18 + hour; // e.g. 2am = 20th hour (12 day + 6 night + 2)
+                currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
+                isDay = false;
             } else {
                 // Same day
                 const currentRuler = dayRulers[dayOfWeek];
@@ -4637,7 +4679,7 @@ async function updatePlanetaryHour() {
                 isDay = (hour < 18);
             }
         }
-        
+
         // Show notification if API failed but we have location
         if (AppState.settings.location && AppState.settings.location.lat) {
             console.warn('Planetary Hours API unavailable, using manual calculation');
@@ -4649,7 +4691,7 @@ async function updatePlanetaryHour() {
     if (planetEl) {
         planetEl.textContent = planetName + (isDay ? " (Day)" : " (Night)");
     }
-    
+
     // Display location name in the widget if available
     const planetLabelEl = document.querySelector('.planet-label');
     if (planetLabelEl && AppState.settings.location && AppState.settings.location.name) {
@@ -4673,72 +4715,72 @@ async function updatePlanetaryHour() {
 function getSunTimes(date, lat, lng) {
     // Source: https://en.wikipedia.org/wiki/Sunrise_equation
     // Simplified implementation
-    
+
     const PI = Math.PI;
     const DR = PI / 180;
     const RD = 180 / PI;
-    
+
     const zenith = 90.8333; // Official
-    
+
     // Day of the year
     const start = new Date(date.getFullYear(), 0, 0);
     const diff = date - start;
     const oneDay = 1000 * 60 * 60 * 24;
     const N = Math.floor(diff / oneDay);
-    
+
     // Convert lng to hour value and calculate approximate time
     const lngHour = lng / 15;
-    
+
     const calculate = (isSunrise) => {
         const t = N + ((isSunrise ? 6 : 18) - lngHour) / 24;
         const M = (0.9856 * t) - 3.289;
-        
+
         // Sun's true longitude
         let L = M + (1.916 * Math.sin(M * DR)) + (0.020 * Math.sin(2 * M * DR)) + 282.634;
         L = (L + 360) % 360; // Normalize
-        
+
         // Right ascension
         let RA = RD * Math.atan(0.91764 * Math.tan(L * DR));
         RA = (RA + 360) % 360;
-        
+
         // RA needs to be in same quadrant as L
         const Lquadrant = (Math.floor(L / 90)) * 90;
         const RAquadrant = (Math.floor(RA / 90)) * 90;
         RA = RA + (Lquadrant - RAquadrant);
         RA = RA / 15;
-        
+
         // Sun's declination
         const sinDec = 0.39782 * Math.sin(L * DR);
         const cosDec = Math.cos(Math.asin(sinDec));
-        
+
         // Sun's local hour angle
         const cosH = (Math.cos(zenith * DR) - (sinDec * Math.sin(lat * DR))) / (cosDec * Math.cos(lat * DR));
-        
+
         if (cosH > 1 || cosH < -1) return null; // Sun never rises/sets
-        
+
         const H = (isSunrise ? (360 - RD * Math.acos(cosH)) : (RD * Math.acos(cosH))) / 15;
-        
+
         // Local mean time of rising/setting
         const T = H + RA - (0.06571 * t) - 6.622;
-        
+
         // Adjust back to UTC
         let UT = T - lngHour;
         UT = (UT + 24) % 24;
-        
+
         // Convert to local time object
         const result = new Date(date);
         result.setUTCHours(Math.floor(UT));
         result.setUTCMinutes(Math.floor((UT % 1) * 60));
         result.setUTCSeconds(0);
-        
+
         return result;
     };
-    
+
     const sunrise = calculate(true);
     const sunset = calculate(false);
-    
+
     if (!sunrise || !sunset) return null;
-    
+
     return { sunrise, sunset };
 }
 
@@ -4746,7 +4788,7 @@ function renderBadges() {
     const grid = document.getElementById('badgesGrid');
     if (!grid) return;
     grid.innerHTML = '';
-    
+
     BADGES.forEach(badge => {
         const unlocked = AppState.user.badges.includes(badge.id);
         const el = document.createElement('div');
@@ -4785,7 +4827,7 @@ function showNotification(msg, type) {
     toast.style.borderRadius = '4px';
     toast.style.boxShadow = '0 5px 15px rgba(0,0,0,0.5)';
     toast.textContent = msg;
-    
+
     const container = document.getElementById('toastContainer');
     if (container) {
         container.appendChild(toast);
@@ -4831,17 +4873,17 @@ function countCompletedTasks(state) {
 window.openExportPDFModal = (type) => {
     const modalId = 'exportPDFModal';
     let modal = document.getElementById(modalId);
-    
+
     const title = type === 'journal' ? 'Export Journal' : 'Export Calendar';
     const icon = type === 'journal' ? '📓' : '📅';
-    
+
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
         modal.className = 'modal';
         document.body.appendChild(modal);
     }
-    
+
     modal.innerHTML = `
         <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
         <div class="modal-content">
@@ -4883,15 +4925,15 @@ window.openExportPDFModal = (type) => {
             </div>
         </div>
     `;
-    
+
     // Set default dates
     const today = new Date().toISOString().split('T')[0];
-    const monthAgo = new Date(Date.now() - 30*24*60*60*1000).toISOString().split('T')[0];
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
     setTimeout(() => {
         document.getElementById('exportFromDate').value = monthAgo;
         document.getElementById('exportToDate').value = today;
     }, 10);
-    
+
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
 };
@@ -4903,56 +4945,56 @@ window.toggleDateRange = (show) => {
 window.generatePDF = (type) => {
     const isRange = document.querySelector('input[name="exportRange"]:checked').value === 'range';
     let fromDate = null, toDate = null;
-    
+
     if (isRange) {
         fromDate = document.getElementById('exportFromDate').value;
         toDate = document.getElementById('exportToDate').value;
-        
+
         if (!fromDate || !toDate) {
             showNotification('Please select both dates', 'error');
             return;
         }
-        
+
         if (new Date(fromDate) > new Date(toDate)) {
             showNotification('From date must be before To date', 'error');
             return;
         }
     }
-    
+
     if (type === 'journal') {
         exportJournalPDF(fromDate, toDate);
     } else {
         exportCalendarPDF(fromDate, toDate);
     }
-    
+
     window.closeModal('exportPDFModal');
 };
 
 function exportJournalPDF(fromDate, toDate) {
     let entries = [...AppState.journal].sort((a, b) => new Date(b.date) - new Date(a.date));
-    
+
     if (fromDate && toDate) {
         const from = new Date(fromDate);
         const to = new Date(toDate);
         to.setHours(23, 59, 59);
-        
+
         entries = entries.filter(e => {
             const entryDate = new Date(e.date);
             return entryDate >= from && entryDate <= to;
         });
     }
-    
+
     if (entries.length === 0) {
         showNotification('No journal entries found in selected range', 'error');
         return;
     }
-    
-    const dateRangeText = fromDate && toDate 
+
+    const dateRangeText = fromDate && toDate
         ? `${formatDateForDisplay(fromDate)} - ${formatDateForDisplay(toDate)}`
         : 'All Time';
-    
+
     const moodEmojis = { great: '😊', good: '🙂', neutral: '😐', low: '😔', bad: '😢' };
-    
+
     let html = `
         <!DOCTYPE html>
         <html>
@@ -5043,16 +5085,16 @@ function exportJournalPDF(fromDate, toDate) {
                 <div class="subtitle">${dateRangeText} • ${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}</div>
             </div>
     `;
-    
+
     entries.forEach(entry => {
         const date = new Date(entry.date);
-        const formattedDate = date.toLocaleDateString('en-US', { 
+        const formattedDate = date.toLocaleDateString('en-US', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
             hour: '2-digit', minute: '2-digit'
         });
         const mood = entry.mood ? `${moodEmojis[entry.mood] || ''} ${entry.mood.charAt(0).toUpperCase() + entry.mood.slice(1)}` : '';
         const tags = entry.tags ? entry.tags.split(',').map(t => t.trim()).filter(t => t) : [];
-        
+
         html += `
             <div class="entry">
                 <div class="entry-header">
@@ -5068,7 +5110,7 @@ function exportJournalPDF(fromDate, toDate) {
             </div>
         `;
     });
-    
+
     html += `
             <div class="footer">
                 Exported from Arcana Productivity • ${new Date().toLocaleString()}
@@ -5076,14 +5118,14 @@ function exportJournalPDF(fromDate, toDate) {
         </body>
         </html>
     `;
-    
+
     openPrintWindow(html, 'journal');
 }
 
 function exportCalendarPDF(fromDate, toDate) {
     // Get scheduled items
     let scheduled = [...(AppState.scheduled || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
-    
+
     // Get journal entries for dates
     let journalByDate = {};
     AppState.journal.forEach(j => {
@@ -5091,7 +5133,7 @@ function exportCalendarPDF(fromDate, toDate) {
         if (!journalByDate[dateKey]) journalByDate[dateKey] = [];
         journalByDate[dateKey].push(j);
     });
-    
+
     // Get completed flows for dates
     let flowsByDate = {};
     AppState.flows.forEach(flow => {
@@ -5103,17 +5145,17 @@ function exportCalendarPDF(fromDate, toDate) {
             });
         }
     });
-    
+
     if (fromDate && toDate) {
         const from = new Date(fromDate);
         const to = new Date(toDate);
         to.setHours(23, 59, 59);
-        
+
         scheduled = scheduled.filter(s => {
             const d = new Date(s.date);
             return d >= from && d <= to;
         });
-        
+
         // Filter journal and flows by date
         Object.keys(journalByDate).forEach(key => {
             const d = new Date(key);
@@ -5124,22 +5166,22 @@ function exportCalendarPDF(fromDate, toDate) {
             if (d < from || d > to) delete flowsByDate[key];
         });
     }
-    
+
     // Collect all dates with activity
     const allDates = new Set();
     scheduled.forEach(s => allDates.add(s.date));
     Object.keys(journalByDate).forEach(d => allDates.add(d));
     Object.keys(flowsByDate).forEach(d => allDates.add(d));
-    
+
     if (allDates.size === 0) {
         showNotification('No calendar activity found in selected range', 'error');
         return;
     }
-    
-    const dateRangeText = fromDate && toDate 
+
+    const dateRangeText = fromDate && toDate
         ? `${formatDateForDisplay(fromDate)} - ${formatDateForDisplay(toDate)}`
         : 'All Time';
-    
+
     let html = `
         <!DOCTYPE html>
         <html>
@@ -5224,23 +5266,23 @@ function exportCalendarPDF(fromDate, toDate) {
                 <div class="subtitle">${dateRangeText}</div>
             </div>
     `;
-    
+
     // Sort dates
     const sortedDates = Array.from(allDates).sort((a, b) => new Date(a) - new Date(b));
-    
+
     sortedDates.forEach(dateStr => {
         const date = new Date(dateStr);
-        const formattedDate = date.toLocaleDateString('en-US', { 
+        const formattedDate = date.toLocaleDateString('en-US', {
             weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
         });
-        
+
         const dayScheduled = scheduled.filter(s => s.date === dateStr);
         const dayJournals = journalByDate[dateStr] || [];
         const dayFlows = flowsByDate[dateStr] || [];
-        
+
         html += `<div class="date-section">
             <div class="date-header">${formattedDate}</div>`;
-        
+
         // Scheduled items
         if (dayScheduled.length > 0) {
             html += `<div class="activity-group">
@@ -5256,7 +5298,7 @@ function exportCalendarPDF(fromDate, toDate) {
             });
             html += `</div>`;
         }
-        
+
         // Completed flows
         if (dayFlows.length > 0) {
             html += `<div class="activity-group">
@@ -5269,7 +5311,7 @@ function exportCalendarPDF(fromDate, toDate) {
             });
             html += `</div>`;
         }
-        
+
         // Journal entries
         if (dayJournals.length > 0) {
             html += `<div class="activity-group">
@@ -5283,10 +5325,10 @@ function exportCalendarPDF(fromDate, toDate) {
             });
             html += `</div>`;
         }
-        
+
         html += `</div>`;
     });
-    
+
     html += `
             <div class="footer">
                 Exported from Arcana Productivity • ${new Date().toLocaleString()}
@@ -5294,7 +5336,7 @@ function exportCalendarPDF(fromDate, toDate) {
         </body>
         </html>
     `;
-    
+
     openPrintWindow(html, 'calendar');
 }
 
@@ -5304,22 +5346,22 @@ function openPrintWindow(html, type) {
         showNotification('Please allow popups to export PDF', 'error');
         return;
     }
-    
+
     printWindow.document.write(html);
     printWindow.document.close();
-    
+
     // Auto-trigger print dialog after content loads
     printWindow.onload = () => {
         setTimeout(() => {
             printWindow.print();
         }, 250);
     };
-    
+
     showNotification(`${type.charAt(0).toUpperCase() + type.slice(1)} ready! Use Print → Save as PDF`, 'gold');
 }
 
 function formatDateForDisplay(dateStr) {
-    return new Date(dateStr).toLocaleDateString('en-US', { 
+    return new Date(dateStr).toLocaleDateString('en-US', {
         month: 'short', day: 'numeric', year: 'numeric'
     });
 }

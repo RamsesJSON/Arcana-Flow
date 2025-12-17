@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Arcana Flow - Mystical Productivity</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
     <script src="config.js"></script>
 </head>
+
 <body>
     <!-- Mobile Header -->
     <header class="mobile-header">
@@ -24,7 +28,7 @@
 
     <!-- Particle Background -->
     <div class="particles" id="particles"></div>
-    
+
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
         <button class="sidebar-close-btn">×</button>
@@ -33,7 +37,7 @@
                 <span class="logo-icon">☽</span>
                 <span class="logo-text">Arcana Flow</span>
             </div>
-            
+
             <!-- XP & Level System -->
             <div class="user-level-container">
                 <div class="level-info">
@@ -52,7 +56,7 @@
                 <span></span>
             </button>
         </div>
-        
+
         <div class="nav-scroll">
             <div class="nav-section">
                 <span class="nav-label">Main</span>
@@ -69,7 +73,7 @@
                     <span class="nav-text">Magick Workings</span>
                 </a>
             </div>
-            
+
             <div class="nav-section">
                 <span class="nav-label">Productivity</span>
                 <a href="#" class="nav-item" data-page="todos">
@@ -85,7 +89,7 @@
                     <span class="nav-text">Mastery</span>
                 </a>
             </div>
-            
+
             <div class="nav-section">
                 <span class="nav-label">Records</span>
                 <a href="#" class="nav-item" data-page="calendar">
@@ -101,7 +105,7 @@
                     <span class="nav-text">Statistics</span>
                 </a>
             </div>
-            
+
             <div class="nav-section nav-bottom">
                 <a href="#" class="nav-item" data-page="settings">
                     <span class="nav-icon">⚙</span>
@@ -109,7 +113,7 @@
                 </a>
             </div>
         </div>
-        
+
         <!-- Astro Widgets -->
         <div class="astro-widgets">
             <div class="moon-phase-widget">
@@ -131,7 +135,7 @@
 
     <!-- Main Content Area -->
     <main class="main-content" id="mainContent">
-        
+
         <!-- Dashboard Page -->
         <section class="page active" id="page-dashboard">
             <header class="page-header">
@@ -143,7 +147,7 @@
                     </button>
                 </div>
             </header>
-            
+
             <!-- Stats Overview -->
             <div class="stats-grid">
                 <div class="stat-card streak-card">
@@ -181,7 +185,7 @@
                     <div class="stat-glow"></div>
                 </div>
             </div>
-            
+
             <!-- Today's Schedule -->
             <div class="dashboard-grid">
                 <div class="card today-schedule">
@@ -199,7 +203,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card active-workings">
                     <div class="card-header">
                         <h2>Active Magick Workings</h2>
@@ -216,7 +220,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Quick Actions -->
             <div class="card quick-actions">
                 <div class="card-header">
@@ -253,17 +257,20 @@
                     <button id="importFlowBtn" class="btn btn-outline" onclick="window.triggerFlowImport()">
                         <span>Import Flow</span>
                     </button>
+                    <button class="btn btn-outline" onclick="openExportFlowModal()">
+                        <span>Export Flows</span>
+                    </button>
                     <button class="btn btn-gold" onclick="openFlowBuilder()">
                         <span>+ Create Flow</span>
                     </button>
                 </div>
             </header>
-            
+
             <div class="flows-tabs">
                 <button class="tab-btn active" data-tab="all-flows">My Flows</button>
                 <button class="tab-btn" data-tab="templates">Templates Library</button>
             </div>
-            
+
             <div class="flows-content active" id="tab-all-flows">
                 <div class="flows-grid" id="flowsGrid">
                     <!-- Flows will be populated here -->
@@ -293,17 +300,17 @@
                     </button>
                 </div>
             </header>
-            
+
             <div class="workings-tabs">
                 <button class="tab-btn active" data-tab="active">Active</button>
                 <button class="tab-btn" data-tab="planned">Planned</button>
                 <button class="tab-btn" data-tab="completed">Completed</button>
             </div>
-            
+
             <div class="workings-grid" id="workingsGrid">
                 <!-- Workings will be populated here -->
             </div>
-            
+
             <div class="empty-state" id="noWorkings">
                 <span class="empty-icon">✧</span>
                 <h3>No magick workings yet</h3>
@@ -322,10 +329,11 @@
                     </button>
                 </div>
             </header>
-            
+
             <!-- Task Filters -->
             <div class="task-filters" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                <input type="text" id="taskSearch" class="input" placeholder="Search tasks..." style="flex: 1; min-width: 200px;" oninput="renderTasks()">
+                <input type="text" id="taskSearch" class="input" placeholder="Search tasks..."
+                    style="flex: 1; min-width: 200px;" oninput="renderTasks()">
                 <select id="taskCategoryFilter" class="input" style="width: 150px;" onchange="renderTasks()">
                     <option value="">All Categories</option>
                     <option value="Work">Work</option>
@@ -341,7 +349,7 @@
                     <option value="Low">Low</option>
                 </select>
             </div>
-            
+
             <div class="tasks-view">
                 <div class="tasks-column">
                     <div class="column-header">
@@ -378,7 +386,7 @@
             <header class="page-header">
                 <h1 class="page-title">Pomodoro Timer</h1>
             </header>
-            
+
             <div class="pomodoro-container">
                 <div class="pomodoro-card">
                     <div class="pomodoro-mode">
@@ -386,18 +394,18 @@
                         <button class="mode-btn" data-mode="short">Short Break</button>
                         <button class="mode-btn" data-mode="long">Long Break</button>
                     </div>
-                    
+
                     <div class="pomodoro-timer">
                         <svg class="timer-ring" viewBox="0 0 200 200">
-                            <circle class="timer-ring-bg" cx="100" cy="100" r="90"/>
-                            <circle class="timer-ring-progress" cx="100" cy="100" r="90" id="pomodoroRing"/>
+                            <circle class="timer-ring-bg" cx="100" cy="100" r="90" />
+                            <circle class="timer-ring-progress" cx="100" cy="100" r="90" id="pomodoroRing" />
                         </svg>
                         <div class="timer-display">
                             <span class="timer-time" id="pomodoroTime">25:00</span>
                             <span class="timer-label" id="pomodoroLabel">Focus Time</span>
                         </div>
                     </div>
-                    
+
                     <div class="pomodoro-controls">
                         <button class="btn btn-lg btn-gold" id="pomodoroStartBtn" onclick="togglePomodoro()">
                             Start
@@ -406,7 +414,7 @@
                             Reset
                         </button>
                     </div>
-                    
+
                     <div class="pomodoro-stats">
                         <div class="pomo-stat">
                             <span class="pomo-stat-value" id="pomodoroCount">0</span>
@@ -418,24 +426,28 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="pomodoro-settings card">
                     <h3>Timer Settings</h3>
                     <div class="setting-row">
                         <label>Work Duration: <span id="workDurationVal">25</span> min</label>
-                        <input type="range" id="workDuration" value="25" min="1" max="120" oninput="document.getElementById('workDurationVal').textContent = this.value">
+                        <input type="range" id="workDuration" value="25" min="1" max="120"
+                            oninput="document.getElementById('workDurationVal').textContent = this.value">
                     </div>
                     <div class="setting-row">
                         <label>Short Break: <span id="shortBreakVal">5</span> min</label>
-                        <input type="range" id="shortBreak" value="5" min="1" max="30" oninput="document.getElementById('shortBreakVal').textContent = this.value">
+                        <input type="range" id="shortBreak" value="5" min="1" max="30"
+                            oninput="document.getElementById('shortBreakVal').textContent = this.value">
                     </div>
                     <div class="setting-row">
                         <label>Long Break: <span id="longBreakVal">15</span> min</label>
-                        <input type="range" id="longBreak" value="15" min="1" max="60" oninput="document.getElementById('longBreakVal').textContent = this.value">
+                        <input type="range" id="longBreak" value="15" min="1" max="60"
+                            oninput="document.getElementById('longBreakVal').textContent = this.value">
                     </div>
                     <div class="setting-row">
                         <label>Long Break After: <span id="longBreakAfterVal">4</span> pomodoros</label>
-                        <input type="range" id="longBreakAfter" value="4" min="1" max="10" oninput="document.getElementById('longBreakAfterVal').textContent = this.value">
+                        <input type="range" id="longBreakAfter" value="4" min="1" max="10"
+                            oninput="document.getElementById('longBreakAfterVal').textContent = this.value">
                     </div>
                 </div>
             </div>
@@ -451,18 +463,18 @@
                     </button>
                 </div>
             </header>
-            
+
             <div class="mastery-grid" id="masteryGrid">
                 <!-- Mastery goals populated here -->
             </div>
-            
+
             <div class="empty-state" id="noMastery">
                 <span class="empty-icon">⚝</span>
                 <h3>No mastery goals yet</h3>
                 <p>Track your 10,000 hour journey to mastery</p>
                 <button class="btn btn-gold" onclick="openMasteryModal()">Create Goal</button>
             </div>
-            
+
             <!-- Completed Mastery Section -->
             <div id="masteryCompletedSection" style="display:none; margin-top:40px;">
                 <h2 style="color:var(--gold-primary); margin-bottom:20px; display:flex; align-items:center; gap:10px;">
@@ -479,13 +491,14 @@
             <header class="page-header">
                 <h1 class="page-title">Calendar</h1>
                 <div class="header-actions">
-                    <button class="btn btn-outline" onclick="openExportPDFModal('calendar')" title="Export to PDF">📄 Export</button>
+                    <button class="btn btn-outline" onclick="openExportPDFModal('calendar')" title="Export to PDF">📄
+                        Export</button>
                     <button class="btn btn-outline" id="calendarPrev">←</button>
                     <span class="calendar-month" id="calendarMonth">December 2025</span>
                     <button class="btn btn-outline" id="calendarNext">→</button>
                 </div>
             </header>
-            
+
             <div class="calendar-container">
                 <div class="calendar-grid">
                     <div class="calendar-header">
@@ -501,7 +514,7 @@
                         <!-- Days populated here -->
                     </div>
                 </div>
-                
+
                 <div class="calendar-sidebar">
                     <div class="calendar-day-detail" id="calendarDetail">
                         <h3 id="selectedDateTitle">Select a date</h3>
@@ -509,11 +522,12 @@
                             <p class="hint">Click on a date to see scheduled items and journal entries</p>
                         </div>
                         <div class="quick-add-container" id="calendarQuickAdd" style="display:none">
-                            <button class="btn btn-sm btn-outline" onclick="quickScheduleFlow()">+ Schedule Flow</button>
+                            <button class="btn btn-sm btn-outline" onclick="quickScheduleFlow()">+ Schedule
+                                Flow</button>
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Recent Activity -->
                 <div class="card recent-activity">
                     <div class="card-header">
@@ -535,16 +549,18 @@
             <header class="page-header">
                 <h1 class="page-title">Journal</h1>
                 <div class="header-actions">
-                    <button class="btn btn-outline" onclick="openExportPDFModal('journal')" title="Export to PDF">📄 Export</button>
+                    <button class="btn btn-outline" onclick="openExportPDFModal('journal')" title="Export to PDF">📄
+                        Export</button>
                     <button class="btn btn-gold" onclick="openJournalEntry()">
                         <span>+ New Entry</span>
                     </button>
                 </div>
             </header>
-            
+
             <!-- Journal Filters -->
             <div class="journal-filters" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                <input type="text" id="journalSearch" class="input" placeholder="Search entries..." style="flex: 1; min-width: 200px;" oninput="filterJournal()">
+                <input type="text" id="journalSearch" class="input" placeholder="Search entries..."
+                    style="flex: 1; min-width: 200px;" oninput="filterJournal()">
                 <select id="journalMoodFilter" class="input" style="width: 150px;" onchange="filterJournal()">
                     <option value="">All Moods</option>
                     <option value="great">😊 Great</option>
@@ -553,15 +569,16 @@
                     <option value="low">😔 Low</option>
                     <option value="bad">😢 Bad</option>
                 </select>
-                <input type="date" id="journalDateFilter" class="input" style="width: 160px;" onchange="filterJournal()">
+                <input type="date" id="journalDateFilter" class="input" style="width: 160px;"
+                    onchange="filterJournal()">
             </div>
-            
+
             <div class="journal-container">
                 <div class="journal-list" id="journalList">
                     <!-- Journal entries populated here -->
                 </div>
             </div>
-            
+
             <div class="empty-state" id="noJournal">
                 <span class="empty-icon">⎔</span>
                 <h3>No journal entries yet</h3>
@@ -583,7 +600,7 @@
                     </select>
                 </div>
             </header>
-            
+
             <div class="stats-overview">
                 <div class="stat-card large">
                     <div class="stat-content">
@@ -610,7 +627,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Badges Section -->
             <div class="card badges-section">
                 <div class="card-header">
@@ -629,18 +646,20 @@
             <header class="page-header">
                 <h1 class="page-title">Settings</h1>
             </header>
-            
+
             <div class="settings-container">
                 <div class="card settings-section">
                     <h3><i class="fas fa-map-marker-alt"></i> Location & Astronomy</h3>
                     <p class="settings-hint">Set your location for accurate Planetary Hour calculations.</p>
                     <div class="settings-row" style="display:flex; gap:10px; align-items:center;">
                         <div style="flex:1;">
-                            <input type="text" id="locationSearch" placeholder="Search City (e.g. London, UK)" class="input">
+                            <input type="text" id="locationSearch" placeholder="Search City (e.g. London, UK)"
+                                class="input">
                         </div>
                         <button class="btn btn-gold" onclick="searchLocation()">Search</button>
                     </div>
-                    <div id="locationResult" style="margin-top:15px; padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; display:none;">
+                    <div id="locationResult"
+                        style="margin-top:15px; padding:10px; background:rgba(255,255,255,0.05); border-radius:6px; display:none;">
                         <!-- Result populated by JS -->
                     </div>
                 </div>
@@ -661,13 +680,6 @@
                         </div>
                         <button class="btn btn-outline" onclick="triggerSelectiveImport()">Import</button>
                     </div>
-                    <div class="settings-row">
-                        <div class="setting-info">
-                            <span class="setting-title">Export Flows</span>
-                            <span class="setting-desc">Select and export one or more flows</span>
-                        </div>
-                        <button class="btn btn-outline" onclick="openExportFlowModal()">Select Flows</button>
-                    </div>
                     <div class="settings-row danger">
                         <div class="setting-info">
                             <span class="setting-title">Clear All Data</span>
@@ -676,7 +688,7 @@
                         <button class="btn btn-danger" onclick="confirmClearData()">Clear Data</button>
                     </div>
                 </div>
-                
+
                 <div class="card settings-section">
                     <h3>Preferences</h3>
                     <div class="settings-row">
@@ -720,7 +732,7 @@
                         </label>
                     </div>
                 </div>
-                
+
                 <div class="card settings-section">
                     <h3>About</h3>
                     <div class="about-info">
@@ -753,17 +765,22 @@
                 <div class="form-group">
                     <label>Cover Image (optional)</label>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:10px;">
-                        <select id="flowCoverPreset" class="input" style="flex:1; min-width:150px;" onchange="applyCoverImagePreset(this.value)">
+                        <select id="flowCoverPreset" class="input" style="flex:1; min-width:150px;"
+                            onchange="applyCoverImagePreset(this.value)">
                             <option value="">Choose Preset...</option>
                         </select>
                         <span style="color:#666; font-size:0.8rem;">or</span>
-                        <input type="file" id="flowImage" accept="image/*" class="input" style="flex:1; min-width:150px;" onchange="handleFlowCoverUpload(this)">
+                        <input type="file" id="flowImage" accept="image/*" class="input"
+                            style="flex:1; min-width:150px;" onchange="handleFlowCoverUpload(this)">
                     </div>
-                    <div id="flowImagePreview" style="margin-top:10px; display:none; width:100%; height:150px; background-size:cover; background-position:center; border-radius:6px; position:relative;">
-                        <button onclick="clearCoverImage()" style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.75rem;">✕ Clear</button>
+                    <div id="flowImagePreview"
+                        style="margin-top:10px; display:none; width:100%; height:150px; background-size:cover; background-position:center; border-radius:6px; position:relative;">
+                        <button onclick="clearCoverImage()"
+                            style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.75rem;">✕
+                            Clear</button>
                     </div>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Schedule</label>
                     <select id="flowSchedule" class="input">
@@ -776,7 +793,7 @@
                         <option value="specific">Specific Date</option>
                     </select>
                 </div>
-                
+
                 <div class="form-group schedule-options" id="weeklyOptions" style="display:none">
                     <label>Select Days</label>
                     <div class="day-selector">
@@ -789,27 +806,29 @@
                         <label><input type="checkbox" value="6"> Sat</label>
                     </div>
                 </div>
-                
+
                 <div class="form-group schedule-options" id="specificDateOption" style="display:none">
                     <label>Select Date</label>
                     <input type="date" id="flowSpecificDate" class="input">
                 </div>
-                
+
                 <div class="form-group">
                     <label>Link to Mastery Goal (optional)</label>
                     <select id="flowMasteryLink" class="input">
                         <option value="">None</option>
                     </select>
                 </div>
-                
+
                 <div class="components-builder">
                     <div class="components-header">
                         <h3>Flow Components</h3>
                         <div class="component-buttons">
                             <button class="btn btn-sm btn-outline" onclick="addComponent('timer')">+ Timer</button>
-                            <button class="btn btn-sm btn-outline" onclick="addComponent('stopwatch')">+ Stopwatch</button>
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('stopwatch')">+
+                                Stopwatch</button>
                             <button class="btn btn-sm btn-outline" onclick="addComponent('reps')">+ Rep Counter</button>
-                            <button class="btn btn-sm btn-outline" onclick="addComponent('breathing')">+ Breathing</button>
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('breathing')">+
+                                Breathing</button>
                         </div>
                     </div>
                     <div class="components-list" id="componentsList">
@@ -860,11 +879,14 @@
                 <div class="form-group">
                     <label>Sigil/Image</label>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <input type="file" id="workingImageFile" accept="image/*" class="input" style="flex:1;" onchange="handleWorkingImageUpload(this)">
+                        <input type="file" id="workingImageFile" accept="image/*" class="input" style="flex:1;"
+                            onchange="handleWorkingImageUpload(this)">
                     </div>
                     <div id="workingImagePreview" style="display:none; margin-top:10px;">
-                        <img id="workingImagePreviewImg" style="max-width:150px; max-height:100px; border-radius:8px; border:1px solid var(--gold-dim);">
-                        <button class="btn-sm btn-outline" onclick="clearWorkingImage()" style="margin-left:10px;">Clear</button>
+                        <img id="workingImagePreviewImg"
+                            style="max-width:150px; max-height:100px; border-radius:8px; border:1px solid var(--gold-dim);">
+                        <button class="btn-sm btn-outline" onclick="clearWorkingImage()"
+                            style="margin-left:10px;">Clear</button>
                     </div>
                     <input type="hidden" id="workingImage" value="">
                 </div>
@@ -889,13 +911,15 @@
                     <h3 style="margin-bottom:10px;">Create New Pattern</h3>
                     <div class="form-group">
                         <label>Pattern Name</label>
-                        <input type="text" id="breathPatternName" placeholder="e.g., Custom Alternate Nostril" class="input">
+                        <input type="text" id="breathPatternName" placeholder="e.g., Custom Alternate Nostril"
+                            class="input">
                     </div>
                     <div class="form-group">
                         <label>Description (optional)</label>
-                        <input type="text" id="breathPatternDesc" placeholder="e.g., Advanced 6-phase pattern" class="input">
+                        <input type="text" id="breathPatternDesc" placeholder="e.g., Advanced 6-phase pattern"
+                            class="input">
                     </div>
-                    
+
                     <div style="margin:15px 0;">
                         <label style="display:flex; justify-content:space-between; align-items:center;">
                             <span>Breathing Phases</span>
@@ -903,7 +927,7 @@
                         </label>
                         <div id="breathingPhasesList" style="margin-top:10px;"></div>
                     </div>
-                    
+
                     <button class="btn btn-gold" onclick="saveBreathingPattern()">Save Pattern</button>
                 </div>
                 <div style="border-top:1px solid var(--border-color); padding-top:20px;">
@@ -973,11 +997,14 @@
                 <div class="form-group">
                     <label>Goal Type</label>
                     <div class="mood-selector">
-                        <label class="mood-option" style="width:auto; padding:5px 15px; border-radius:4px; border:1px solid var(--border-color);">
-                            <input type="radio" name="masteryType" value="hours" checked onchange="toggleMasteryInput('hours')">
+                        <label class="mood-option"
+                            style="width:auto; padding:5px 15px; border-radius:4px; border:1px solid var(--border-color);">
+                            <input type="radio" name="masteryType" value="hours" checked
+                                onchange="toggleMasteryInput('hours')">
                             <span>Hours</span>
                         </label>
-                        <label class="mood-option" style="width:auto; padding:5px 15px; border-radius:4px; border:1px solid var(--border-color);">
+                        <label class="mood-option"
+                            style="width:auto; padding:5px 15px; border-radius:4px; border:1px solid var(--border-color);">
                             <input type="radio" name="masteryType" value="reps" onchange="toggleMasteryInput('reps')">
                             <span>Reps/Count</span>
                         </label>
@@ -1000,11 +1027,16 @@
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-picker">
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#d4af37" checked><span style="background:#d4af37"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#9b59b6"><span style="background:#9b59b6"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#3498db"><span style="background:#3498db"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#2ecc71"><span style="background:#2ecc71"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#e74c3c"><span style="background:#e74c3c"></span></label>
+                        <label class="color-option"><input type="radio" name="masteryColor" value="#d4af37"
+                                checked><span style="background:#d4af37"></span></label>
+                        <label class="color-option"><input type="radio" name="masteryColor" value="#9b59b6"><span
+                                style="background:#9b59b6"></span></label>
+                        <label class="color-option"><input type="radio" name="masteryColor" value="#3498db"><span
+                                style="background:#3498db"></span></label>
+                        <label class="color-option"><input type="radio" name="masteryColor" value="#2ecc71"><span
+                                style="background:#2ecc71"></span></label>
+                        <label class="color-option"><input type="radio" name="masteryColor" value="#e74c3c"><span
+                                style="background:#e74c3c"></span></label>
                     </div>
                 </div>
             </div>
@@ -1040,16 +1072,22 @@
                 <div class="form-group">
                     <label>Mood</label>
                     <div class="mood-selector">
-                        <label class="mood-option"><input type="radio" name="journalMood" value="great"><span>😊</span></label>
-                        <label class="mood-option"><input type="radio" name="journalMood" value="good"><span>🙂</span></label>
-                        <label class="mood-option"><input type="radio" name="journalMood" value="neutral" checked><span>😐</span></label>
-                        <label class="mood-option"><input type="radio" name="journalMood" value="low"><span>😔</span></label>
-                        <label class="mood-option"><input type="radio" name="journalMood" value="bad"><span>😢</span></label>
+                        <label class="mood-option"><input type="radio" name="journalMood"
+                                value="great"><span>😊</span></label>
+                        <label class="mood-option"><input type="radio" name="journalMood"
+                                value="good"><span>🙂</span></label>
+                        <label class="mood-option"><input type="radio" name="journalMood" value="neutral"
+                                checked><span>😐</span></label>
+                        <label class="mood-option"><input type="radio" name="journalMood"
+                                value="low"><span>😔</span></label>
+                        <label class="mood-option"><input type="radio" name="journalMood"
+                                value="bad"><span>😢</span></label>
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Entry</label>
-                    <textarea id="journalContent" placeholder="Write your thoughts..." class="input journal-textarea"></textarea>
+                    <textarea id="journalContent" placeholder="Write your thoughts..."
+                        class="input journal-textarea"></textarea>
                 </div>
                 <div class="form-group">
                     <label>Tags (comma separated)</label>
@@ -1112,16 +1150,16 @@
     <div class="flow-runner" id="flowRunner">
         <div class="runner-background"></div>
         <button class="runner-exit" onclick="exitFlowRunner()">×</button>
-        
+
         <div class="runner-progress">
             <div class="runner-progress-bar" id="runnerProgressBar"></div>
             <span class="runner-progress-text" id="runnerProgressText">1 / 3</span>
         </div>
-        
+
         <div class="runner-content" id="runnerContent">
             <!-- Dynamic content based on component type -->
         </div>
-        
+
         <div class="runner-controls" id="runnerControls">
             <!-- Dynamic controls -->
         </div>
@@ -1137,12 +1175,12 @@
             </div>
             <div class="modal-body">
                 <p id="previewFlowDesc" style="color:var(--text-muted); margin-bottom:20px;"></p>
-                
+
                 <h4 style="margin-bottom:10px; color:var(--gold-primary);">Steps</h4>
                 <div id="previewFlowSteps" style="max-height:300px; overflow-y:auto; margin-bottom:20px;">
                     <!-- Steps list -->
                 </div>
-                
+
                 <div class="modal-actions">
                     <button class="btn btn-outline" onclick="closeModal('flowPreviewModal')">Cancel</button>
                     <button class="btn btn-gold" id="startFlowBtn">Start Flow</button>
@@ -1169,7 +1207,8 @@
         </div>
         <div class="breathing-controls-bottom">
             <button class="btn btn-gold" id="breathingStartBtn" onclick="startBreathingLoop()">Start</button>
-            <button class="btn btn-outline" id="breathingStopBtn" onclick="stopBreathingLoop()" style="display:none;">Stop</button>
+            <button class="btn btn-outline" id="breathingStopBtn" onclick="stopBreathingLoop()"
+                style="display:none;">Stop</button>
         </div>
     </div>
 
@@ -1196,4 +1235,5 @@
 
     <script src="app.js"></script>
 </body>
+
 </html>
