@@ -94,25 +94,43 @@ document.addEventListener('DOMContentLoaded', () => {
     initKeyboardShortcuts();
 
     // Mobile toggle
-    document.getElementById('sidebarToggle')?.addEventListener('click', () => {
-        document.getElementById('sidebar').classList.add('active');
+    const toggleSidebar = (force) => {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const isActive = force !== undefined ? force : !sidebar.classList.contains('active');
+
+        sidebar.classList.toggle('active', isActive);
+        overlay?.classList.toggle('active', isActive);
+
+        if (isActive && window.innerWidth <= 768) {
+            document.body.classList.add('no-scroll');
+        } else if (!isActive) {
+            document.body.classList.remove('no-scroll');
+        }
+    };
+
+    document.getElementById('sidebarToggle')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSidebar();
     });
+
+    document.getElementById('sidebarToggleInternal')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSidebar();
+    });
+
+    document.getElementById('sidebarOverlay')?.addEventListener('click', () => toggleSidebar(false));
 
     // Mobile close button (if exists)
     document.querySelector('.sidebar-close-btn')?.addEventListener('click', () => {
-        document.getElementById('sidebar').classList.remove('active');
+        toggleSidebar(false);
     });
 
-    // Close sidebar when clicking outside (overlay)
-    document.addEventListener('click', (e) => {
-        const sidebar = document.getElementById('sidebar');
-        const toggle = document.getElementById('sidebarToggle');
-        if (window.innerWidth <= 768 &&
-            sidebar.classList.contains('active') &&
-            !sidebar.contains(e.target) &&
-            !toggle.contains(e.target)) {
-            sidebar.classList.remove('active');
-        }
+    // Close sidebar on nav click (mobile)
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 768) toggleSidebar(false);
+        });
     });
 });
 
@@ -493,6 +511,317 @@ function initDashboard() {
 
     renderTodaySchedule();
     updateStatsDisplay();
+}
+
+// --- ASTRO WIDGETS ---
+// Zodiac sign symbols for display
+const ZODIAC_SYMBOLS = {
+    aries: '♈', taurus: '♉', gemini: '♊', cancer: '♋',
+    leo: '♌', virgo: '♍', libra: '♎', scorpio: '♏',
+    sagittarius: '♐', capricorn: '♑', aquarius: '♒', pisces: '♓'
+};
+
+// Moon phase icons
+const MOON_ICONS = {
+    'New Moon': '🌑',
+    'Waxing Crescent': '🌒',
+    'First Quarter': '🌓',
+    'Waxing Gibbous': '🌔',
+    'Full Moon': '🌕',
+    'Waning Gibbous': '🌖',
+    'Last Quarter': '🌗',
+    'Waning Crescent': '🌘'
+};
+
+// Planetary symbols and data
+const PLANETS = {
+    saturn: { symbol: '♄', name: 'Saturn', color: '#808080' },
+    jupiter: { symbol: '♃', name: 'Jupiter', color: '#FFA500' },
+    mars: { symbol: '♂', name: 'Mars', color: '#FF4040' },
+    sun: { symbol: '☉', name: 'Sun', color: '#FFD700' },
+    venus: { symbol: '♀', name: 'Venus', color: '#32CD32' },
+    mercury: { symbol: '☿', name: 'Mercury', color: '#DDA0DD' },
+    moon: { symbol: '☽', name: 'Moon', color: '#C0C0C0' }
+};
+
+// Chaldean order for planetary hours
+const CHALDEAN_ORDER = ['saturn', 'jupiter', 'mars', 'sun', 'venus', 'mercury', 'moon'];
+
+// Day rulers (Sunday=0)
+const DAY_RULERS = ['sun', 'moon', 'mars', 'mercury', 'jupiter', 'venus', 'saturn'];
+
+function initAstro() {
+    // Initial update
+    updateAstroWidgets();
+
+    // Update every minute for planetary hours
+    setInterval(updateAstroWidgets, 60000);
+
+    // Refresh moon data every 30 minutes
+    setInterval(fetchMoonData, 30 * 60000);
+}
+
+async function updateAstroWidgets() {
+    updatePlanetaryHour();
+    await fetchMoonData();
+}
+
+// Fetch moon data from AstroApollo API
+async function fetchMoonData() {
+    try {
+        const now = new Date();
+        const isoDate = now.toISOString();
+
+        const response = await fetch(`https://astroapollo.org/api/current-planets?date=${encodeURIComponent(isoDate)}`);
+
+        if (!response.ok) {
+            throw new Error('API request failed');
+        }
+
+        const data = await response.json();
+
+        if (data.data && data.data.current_chart && data.data.current_chart.planets) {
+            const planets = data.data.current_chart.planets;
+            const moon = planets.find(p => p.name === 'moon');
+            const sun = planets.find(p => p.name === 'sun');
+
+            if (moon && moon.zodiac) {
+                const moonSign = moon.zodiac.signName;
+                const moonDegree = moon.zodiac.degree;
+                const moonMinute = moon.zodiac.minute;
+
+                // Update moon sign display
+                const moonSignEl = document.getElementById('moonSign');
+                if (moonSignEl) {
+                    const zodiacSymbol = ZODIAC_SYMBOLS[moonSign.toLowerCase()] || '';
+                    const signCapitalized = moonSign.charAt(0).toUpperCase() + moonSign.slice(1).toLowerCase();
+                    moonSignEl.textContent = `${zodiacSymbol} in ${signCapitalized} ${moonDegree}°${moonMinute}'`;
+                }
+
+                // Calculate moon phase using ecliptic longitudes
+                if (sun && sun.ecliptic && moon.ecliptic) {
+                    const sunLong = sun.ecliptic.longitude;
+                    const moonLong = moon.ecliptic.longitude;
+                    const phaseName = calculateMoonPhase(sunLong, moonLong);
+
+                    const moonPhaseEl = document.getElementById('moonPhase');
+                    const moonIconEl = document.getElementById('moonIcon');
+
+                    if (moonPhaseEl) moonPhaseEl.textContent = phaseName;
+                    if (moonIconEl) moonIconEl.textContent = MOON_ICONS[phaseName] || '🌙';
+                }
+            }
+        }
+    } catch (error) {
+        console.log('Moon data fetch failed, using fallback calculation:', error);
+        // Fallback: calculate locally
+        calculateMoonDataFallback();
+    }
+}
+
+// Calculate moon phase from sun and moon longitudes
+function calculateMoonPhase(sunLongitude, moonLongitude) {
+    let phaseAngle = (moonLongitude - sunLongitude) % 360;
+    if (phaseAngle < 0) phaseAngle += 360;
+
+    if (phaseAngle < 22.5) return 'New Moon';
+    if (phaseAngle < 67.5) return 'Waxing Crescent';
+    if (phaseAngle < 112.5) return 'First Quarter';
+    if (phaseAngle < 157.5) return 'Waxing Gibbous';
+    if (phaseAngle < 202.5) return 'Full Moon';
+    if (phaseAngle < 247.5) return 'Waning Gibbous';
+    if (phaseAngle < 292.5) return 'Last Quarter';
+    if (phaseAngle < 337.5) return 'Waning Crescent';
+    return 'New Moon';
+}
+
+// Fallback moon calculations when API fails
+function calculateMoonDataFallback() {
+    const now = new Date();
+
+    // Simple synodic month calculation (29.53 days)
+    const SYNODIC_MONTH = 29.530588853;
+    const KNOWN_NEW_MOON = new Date('2000-01-06T18:14:00Z').getTime();
+    const daysSinceNewMoon = (now.getTime() - KNOWN_NEW_MOON) / (1000 * 60 * 60 * 24);
+    const moonAge = daysSinceNewMoon % SYNODIC_MONTH;
+
+    // Determine phase
+    let phaseName;
+    if (moonAge < 1.85) phaseName = 'New Moon';
+    else if (moonAge < 7.38) phaseName = 'Waxing Crescent';
+    else if (moonAge < 9.23) phaseName = 'First Quarter';
+    else if (moonAge < 14.77) phaseName = 'Waxing Gibbous';
+    else if (moonAge < 16.61) phaseName = 'Full Moon';
+    else if (moonAge < 22.15) phaseName = 'Waning Gibbous';
+    else if (moonAge < 24.00) phaseName = 'Last Quarter';
+    else phaseName = 'Waning Crescent';
+
+    // Simple approximate moon sign calculation (moon takes ~2.5 days per sign)
+    const TROPICAL_MONTH = 27.321661;
+    const KNOWN_ARIES_MOON = new Date('2000-01-01T00:00:00Z').getTime();
+    const daysSinceAriesMoon = (now.getTime() - KNOWN_ARIES_MOON) / (1000 * 60 * 60 * 24);
+    const moonDegree = (daysSinceAriesMoon / TROPICAL_MONTH * 360) % 360;
+    const signIndex = Math.floor(moonDegree / 30);
+    const signs = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo',
+        'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
+    const moonSign = signs[signIndex];
+
+    // Update UI
+    const moonPhaseEl = document.getElementById('moonPhase');
+    const moonIconEl = document.getElementById('moonIcon');
+    const moonSignEl = document.getElementById('moonSign');
+
+    if (moonPhaseEl) moonPhaseEl.textContent = phaseName;
+    if (moonIconEl) moonIconEl.textContent = MOON_ICONS[phaseName] || '🌙';
+    if (moonSignEl) {
+        const zodiacSymbol = ZODIAC_SYMBOLS[moonSign] || '';
+        const signCapitalized = moonSign.charAt(0).toUpperCase() + moonSign.slice(1);
+        moonSignEl.textContent = `${zodiacSymbol} in ${signCapitalized} (approx)`;
+    }
+}
+
+// Calculate planetary hour using offline solar algorithm
+function updatePlanetaryHour() {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday
+
+    // Get location from settings or use default (London)
+    const lat = AppState.settings.location?.lat || 51.5074;
+    const lon = AppState.settings.location?.long || -0.1278;
+
+    // Calculate sunrise and sunset for today
+    const { sunrise, sunset } = calculateSunTimes(now, lat, lon);
+
+    // Determine if we're in a day or night hour
+    const currentTime = now.getTime();
+    const sunriseTime = sunrise.getTime();
+    const sunsetTime = sunset.getTime();
+
+    // Also need tomorrow's sunrise for night hours
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const { sunrise: tomorrowSunrise } = calculateSunTimes(tomorrow, lat, lon);
+
+    let hourIndex, dayRuler, hourDuration, hourStart;
+
+    if (currentTime >= sunriseTime && currentTime < sunsetTime) {
+        // Daytime - 12 hours from sunrise to sunset
+        const dayLength = sunsetTime - sunriseTime;
+        hourDuration = dayLength / 12;
+        const timeSinceSunrise = currentTime - sunriseTime;
+        hourIndex = Math.floor(timeSinceSunrise / hourDuration);
+        hourStart = new Date(sunriseTime + hourIndex * hourDuration);
+        dayRuler = DAY_RULERS[dayOfWeek];
+    } else {
+        // Nighttime - 12 hours from sunset to tomorrow's sunrise
+        let nightStart, nightEnd;
+
+        if (currentTime >= sunsetTime) {
+            // After sunset today
+            nightStart = sunsetTime;
+            nightEnd = tomorrowSunrise.getTime();
+        } else {
+            // Before sunrise today - use yesterday's sunset
+            const yesterday = new Date(now);
+            yesterday.setDate(yesterday.getDate() - 1);
+            const { sunset: yesterdaySunset } = calculateSunTimes(yesterday, lat, lon);
+            nightStart = yesterdaySunset.getTime();
+            nightEnd = sunriseTime;
+        }
+
+        const nightLength = nightEnd - nightStart;
+        hourDuration = nightLength / 12;
+        const timeSinceNightStart = currentTime - nightStart;
+        hourIndex = Math.floor(timeSinceNightStart / hourDuration) + 12; // Night hours are 12-23
+        hourStart = new Date(nightStart + (hourIndex - 12) * hourDuration);
+
+        // Night hours use the previous day's ruler if before midnight determination
+        const adjustedDayOfWeek = currentTime < sunriseTime ? (dayOfWeek + 6) % 7 : dayOfWeek;
+        dayRuler = DAY_RULERS[adjustedDayOfWeek];
+    }
+
+    // Calculate which planet rules this hour
+    const dayRulerIndex = CHALDEAN_ORDER.indexOf(dayRuler);
+    const planetIndex = (dayRulerIndex + hourIndex) % 7;
+    const currentPlanet = CHALDEAN_ORDER[planetIndex];
+    const planetData = PLANETS[currentPlanet];
+
+    // Update UI
+    const planetIconEl = document.getElementById('currentPlanetIcon');
+    const planetNameEl = document.getElementById('currentPlanet');
+
+    if (planetIconEl) {
+        planetIconEl.textContent = planetData.symbol;
+        planetIconEl.style.color = planetData.color;
+    }
+
+    if (planetNameEl) {
+        planetNameEl.textContent = planetData.name;
+    }
+}
+
+// Calculate sunrise and sunset using simplified solar algorithm
+function calculateSunTimes(date, lat, lon) {
+    // Based on NOAA Solar Calculations
+    const dayOfYear = getDayOfYear(date);
+
+    // Fractional year (in radians)
+    const gamma = (2 * Math.PI / 365) * (dayOfYear - 1 + (date.getHours() - 12) / 24);
+
+    // Equation of time (minutes)
+    const eqTime = 229.18 * (
+        0.000075 + 0.001868 * Math.cos(gamma) - 0.032077 * Math.sin(gamma)
+        - 0.014615 * Math.cos(2 * gamma) - 0.040849 * Math.sin(2 * gamma)
+    );
+
+    // Solar declination (radians)
+    const decl = 0.006918 - 0.399912 * Math.cos(gamma) + 0.070257 * Math.sin(gamma)
+        - 0.006758 * Math.cos(2 * gamma) + 0.000907 * Math.sin(2 * gamma)
+        - 0.002697 * Math.cos(3 * gamma) + 0.00148 * Math.sin(3 * gamma);
+
+    // Hour angle (radians)
+    const latRad = lat * Math.PI / 180;
+    const zenith = 90.833 * Math.PI / 180; // Official zenith for sunrise/sunset
+
+    let ha;
+    const cosHA = (Math.cos(zenith) / (Math.cos(latRad) * Math.cos(decl)) - Math.tan(latRad) * Math.tan(decl));
+
+    if (cosHA > 1 || cosHA < -1) {
+        // Sun never rises or never sets at this latitude/date
+        // Return approximate times
+        const noon = new Date(date);
+        noon.setHours(12, 0, 0, 0);
+        return {
+            sunrise: new Date(noon.getTime() - 6 * 60 * 60 * 1000),
+            sunset: new Date(noon.getTime() + 6 * 60 * 60 * 1000)
+        };
+    }
+
+    ha = Math.acos(cosHA);
+
+    // Sunrise time in minutes from midnight UTC
+    const sunriseMinutes = 720 - 4 * (lon + ha * 180 / Math.PI) - eqTime;
+    const sunsetMinutes = 720 - 4 * (lon - ha * 180 / Math.PI) - eqTime;
+
+    // Convert to local time
+    const timezoneOffset = date.getTimezoneOffset();
+
+    const sunrise = new Date(date);
+    sunrise.setHours(0, 0, 0, 0);
+    sunrise.setMinutes(sunriseMinutes + timezoneOffset);
+
+    const sunset = new Date(date);
+    sunset.setHours(0, 0, 0, 0);
+    sunset.setMinutes(sunsetMinutes + timezoneOffset);
+
+    return { sunrise, sunset };
+}
+
+function getDayOfYear(date) {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
 }
 
 function renderTodaySchedule() {
@@ -1243,8 +1572,12 @@ function renderFlows() {
         card.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', index);
             card.classList.add('dragging');
+            document.body.classList.add('no-scroll');
         });
-        card.addEventListener('dragend', () => card.classList.remove('dragging'));
+        card.addEventListener('dragend', () => {
+            card.classList.remove('dragging');
+            document.body.classList.remove('no-scroll');
+        });
         card.addEventListener('dragover', (e) => {
             e.preventDefault();
             card.classList.add('drag-over');
@@ -1265,6 +1598,16 @@ function renderFlows() {
         });
 
         card.addEventListener('click', () => openFlowPreview(index));
+
+        // Mobile Drag Support
+        addMobileDragSupport(card, '.drag-handle', (from, to) => {
+            const [moved] = AppState.flows.splice(from, 1);
+            AppState.flows.splice(to, 0, moved);
+            saveState();
+            renderFlows();
+            showNotification('Flow order updated', 'normal');
+        });
+
         grid.appendChild(card);
     });
 }
@@ -2188,10 +2531,12 @@ function renderTasks() {
             try { e.dataTransfer.setData('text/plain', String(task.id)); } catch (err) { }
             try { e.dataTransfer.effectAllowed = 'move'; } catch (err) { }
             el.classList.add('dragging');
+            document.body.classList.add('no-scroll');
         });
 
         el.addEventListener('dragend', () => {
             el.classList.remove('dragging');
+            document.body.classList.remove('no-scroll');
         });
 
         // Format due date display
@@ -2318,60 +2663,135 @@ function initPomodoro() {
     bindSlider('longBreak', 'long');
     bindSlider('longBreakAfter', 'longBreakAfter');
 
+    // Populate Mastery Link selector
+    const updateMasterySelector = () => {
+        const pomoMasterySelect = document.getElementById('pomoMasteryLink');
+        if (!pomoMasterySelect) return;
+
+        const currentVal = AppState.settings.pomodoro.linkedMasteryId;
+        pomoMasterySelect.innerHTML = '<option value="">None (General Focus)</option>';
+        AppState.mastery.forEach(m => {
+            if (m.type === 'hours') {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = `${m.icon || '🧘'} ${m.name}`;
+                if (currentVal == m.id) opt.selected = true;
+                pomoMasterySelect.appendChild(opt);
+            }
+        });
+    };
+
+    updateMasterySelector();
+
+    // Listen for mastery changes to refresh selector
+    const originalRenderMastery = window.renderMastery;
+    window.renderMastery = (...args) => {
+        if (originalRenderMastery) originalRenderMastery(...args);
+        updateMasterySelector();
+        updateLinkedGoalDisplay();
+    };
+
+    const pomoMasterySelect = document.getElementById('pomoMasteryLink');
+    if (pomoMasterySelect) {
+        pomoMasterySelect.onchange = (e) => {
+            AppState.settings.pomodoro.linkedMasteryId = e.target.value || null;
+            saveState();
+            updateLinkedGoalDisplay();
+        };
+    }
+
     // Initialize display
     resetPomodoro();
+    updateStatsDisplay();
 
-    document.querySelectorAll('.mode-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-
-            const mode = btn.dataset.mode;
-            AppState.pomoState.mode = mode;
-            resetPomodoro();
+    // Mode handling for V2 (from side tabs or any future mode switchers)
+    const modeBtns = document.querySelectorAll('.mode-btn');
+    if (modeBtns.length > 0) {
+        modeBtns.forEach(btn => {
+            btn.onclick = () => {
+                modeBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                AppState.pomoState.mode = btn.dataset.mode;
+                resetPomodoro();
+            };
         });
-    });
+    }
+}
+
+function updateLinkedGoalDisplay() {
+    const display = document.getElementById('pomoLinkedGoalDisplay');
+    const nameEl = document.getElementById('pomoLinkedGoalName');
+    const dot = document.getElementById('pomoGoalDot');
+
+    const linkedId = AppState.settings.pomodoro?.linkedMasteryId;
+    if (linkedId) {
+        const m = AppState.mastery.find(x => x.id == linkedId);
+        if (m) {
+            if (display) display.style.display = 'inline-flex';
+            if (nameEl) nameEl.textContent = `${m.icon || '🧘'} ${m.name}`;
+            if (dot) dot.style.setProperty('--goal-color', m.color);
+            return;
+        }
+    }
+    if (display) display.style.display = 'none';
 }
 
 window.togglePomodoro = () => {
-    const btn = document.getElementById('pomodoroStartBtn');
+    const btn = document.getElementById('pomoToggleBtn');
 
     if (AppState.pomoState.isRunning) {
         clearInterval(AppState.pomoState.interval);
         AppState.pomoState.isRunning = false;
-        btn.textContent = "Start";
-        btn.classList.remove('btn-outline');
-        btn.classList.add('btn-gold');
+        if (btn) btn.innerHTML = '<span>▶️</span>';
         saveState();
     } else {
         AppState.pomoState.isRunning = true;
-        btn.textContent = "Pause";
-        btn.classList.remove('btn-gold');
-        btn.classList.add('btn-outline');
+        if (btn) btn.innerHTML = '<span>⏸️</span>';
 
         AppState.pomoState.interval = setInterval(() => {
             AppState.pomoState.time--;
             updatePomoDisplay();
-            saveState();
+
+            if (AppState.pomoState.time % 10 === 0) saveState(); // Save every 10s to avoid lag
 
             if (AppState.pomoState.time <= 0) {
                 clearInterval(AppState.pomoState.interval);
                 AppState.pomoState.isRunning = false;
-                btn.textContent = "Start";
-                btn.classList.remove('btn-outline');
-                btn.classList.add('btn-gold');
+                if (btn) btn.innerHTML = '<span>▶️</span>';
+
                 playNotificationSound();
-                showNotification("Timer Complete", "gold");
+                showNotification("Focus Session Complete!", "gold");
 
                 if (AppState.pomoState.mode === 'work') {
                     AppState.pomodorosToday++;
                     AppState.totalPomodoros++;
                     AppState.lastPomodoroDate = new Date().toISOString().split('T')[0];
-                    addXP(25);
-                    logActivity('pomodoro', 'Pomodoro Session', 25);
+
+                    const durationMin = AppState.settings.pomodoro.work || 25;
+                    const xpGained = durationMin;
+                    addXP(xpGained);
+
+                    // Add to linked Mastery goal
+                    const linkedId = AppState.settings.pomodoro.linkedMasteryId;
+                    if (linkedId) {
+                        const mastery = AppState.mastery.find(m => m.id == linkedId);
+                        if (mastery) {
+                            const hoursGained = durationMin / 60;
+                            mastery.currentHours += hoursGained;
+                            mastery.lastLog = new Date().toISOString();
+                            logActivity('pomodoro', `Session: ${mastery.name}`, xpGained);
+                            showNotification(`+${durationMin}m added to ${mastery.name}`, 'gold');
+                            renderMastery();
+                        } else {
+                            logActivity('pomodoro', 'Focus Session', xpGained);
+                        }
+                    } else {
+                        logActivity('pomodoro', 'Focus Session', xpGained);
+                    }
                 }
                 saveState();
                 updateStatsDisplay();
+                resetPomodoro(); // Reset to next mode if logic is added later, for now just reset
             }
         }, 1000);
     }
@@ -2381,33 +2801,52 @@ window.resetPomodoro = () => {
     clearInterval(AppState.pomoState.interval);
     AppState.pomoState.isRunning = false;
 
-    // Ensure settings exist
     const settings = AppState.settings.pomodoro || { work: 25, short: 5, long: 15 };
-
     AppState.pomoState.time = settings[AppState.pomoState.mode] * 60;
     AppState.pomoState.totalTime = AppState.pomoState.time;
+
     updatePomoDisplay();
+    updateLinkedGoalDisplay();
     saveState();
 
-    const btn = document.getElementById('pomodoroStartBtn');
-    if (btn) {
-        btn.textContent = "Start";
-        btn.classList.remove('btn-outline');
-        btn.classList.add('btn-gold');
-    }
+    const btn = document.getElementById('pomoToggleBtn');
+    if (btn) btn.innerHTML = '<span>▶️</span>';
 };
 
 function updatePomoDisplay() {
     const m = Math.floor(AppState.pomoState.time / 60).toString().padStart(2, '0');
     const s = (AppState.pomoState.time % 60).toString().padStart(2, '0');
-    const el = document.getElementById('pomodoroTime');
+
+    // Update main display
+    const el = document.getElementById('timerDisplay');
     if (el) el.textContent = `${m}:${s}`;
+
+    // Update badge and colors
+    const badge = document.getElementById('pomoModeBadge');
+    const glow = document.getElementById('pomoGlow');
+
+    if (badge) {
+        if (!AppState.pomoState.isRunning && AppState.pomoState.time === AppState.pomoState.totalTime) {
+            badge.textContent = 'Ready to Focus';
+            badge.className = 'pomo-mode-badge';
+            if (glow) glow.style.setProperty('--pomo-glow', 'var(--gold-glow)');
+        } else {
+            const mode = AppState.pomoState.mode;
+            badge.textContent = mode === 'work' ? 'Deep Focus' : (mode === 'short' ? 'Short Rest' : 'Long Rest');
+            badge.className = 'pomo-mode-badge active-work';
+
+            if (glow) {
+                const color = mode === 'work' ? 'var(--gold-glow)' : 'var(--accent-blue)';
+                glow.style.setProperty('--pomo-glow', color);
+            }
+        }
+    }
 
     // Ring progress
     const ring = document.getElementById('pomodoroRing');
     if (ring) {
         const total = AppState.pomoState.totalTime || (25 * 60);
-        const circumference = 2 * Math.PI * 90;
+        const circumference = 2 * Math.PI * 110;
         const offset = circumference - ((AppState.pomoState.time / total) * circumference);
         ring.style.strokeDasharray = `${circumference} ${circumference}`;
         ring.style.strokeDashoffset = offset;
@@ -3113,15 +3552,38 @@ function renderJournal() {
 
 // --- MASTERY ---
 function initMastery() {
+    // Icon selection logic
+    const iconGrid = document.getElementById('masteryIconGrid');
+    if (iconGrid) {
+        iconGrid.querySelectorAll('.mastery-icon-option').forEach(opt => {
+            opt.onclick = () => {
+                iconGrid.querySelectorAll('.mastery-icon-option').forEach(o => o.classList.remove('active'));
+                opt.classList.add('active');
+                document.getElementById('masteryIcon').value = opt.dataset.icon;
+            };
+        });
+    }
     renderMastery();
 }
 
 window.openMasteryModal = () => {
     // Reset form
+    document.getElementById('masteryModalTitle').textContent = 'New Mastery Goal';
+    document.getElementById('masterySaveBtn').textContent = 'Create Mastery';
     document.getElementById('masteryName').value = '';
     document.getElementById('masteryGoal').value = '10';
     document.getElementById('customHours').value = '';
     document.getElementById('customHoursGroup').style.display = 'none';
+    document.getElementById('masteryIcon').value = '🧘';
+
+    // Reset icon grid
+    const iconGrid = document.getElementById('masteryIconGrid');
+    if (iconGrid) {
+        iconGrid.querySelectorAll('.mastery-icon-option').forEach(o => o.classList.remove('active'));
+        iconGrid.querySelector('[data-icon="🧘"]').classList.add('active');
+    }
+
+    delete window.editingMasteryId;
     window.openModal('masteryModal');
 };
 
@@ -3143,6 +3605,8 @@ window.saveMastery = () => {
     if (!name) return showNotification('Please enter a goal name', 'error');
 
     const type = document.querySelector('input[name="masteryType"]:checked').value;
+    const icon = document.getElementById('masteryIcon').value || '🧘';
+    const color = document.querySelector('input[name="masteryColor"]:checked').value;
     let goal;
 
     if (document.getElementById('masteryGoal').value === 'custom') {
@@ -3152,20 +3616,35 @@ window.saveMastery = () => {
         goal = parseInt(document.getElementById('masteryGoal').value);
     }
 
-    const item = {
-        id: Date.now(),
-        name,
-        type,
-        goalHours: goal, // Keeping variable name for compatibility, but it means "Goal Units"
-        currentHours: 0,
-        color: document.querySelector('input[name="masteryColor"]:checked').value
-    };
+    if (window.editingMasteryId) {
+        const item = AppState.mastery.find(m => m.id === window.editingMasteryId);
+        if (item) {
+            item.name = name;
+            item.type = type;
+            item.icon = icon;
+            item.goalHours = goal;
+            item.color = color;
+            showNotification('Mastery goal updated!', 'gold');
+        }
+    } else {
+        const item = {
+            id: Date.now(),
+            name,
+            type,
+            icon,
+            goalHours: goal,
+            currentHours: 0,
+            color: color,
+            created: new Date().toISOString(),
+            lastLog: null
+        };
+        AppState.mastery.push(item);
+        showNotification('Mastery goal created!', 'gold');
+    }
 
-    AppState.mastery.push(item);
     saveState();
     renderMastery();
     window.closeModal('masteryModal');
-    showNotification('Mastery goal created!', 'gold');
 };
 
 function renderMastery() {
@@ -3190,7 +3669,7 @@ function renderMastery() {
         completedSection.style.display = completedMastery.length > 0 ? 'block' : 'none';
     }
 
-    activeMastery.forEach((m, index) => {
+    activeMastery.forEach((m) => {
         const el = document.createElement('div');
         el.className = 'mastery-card-enhanced';
         el.style.setProperty('--card-color', m.color);
@@ -3198,24 +3677,57 @@ function renderMastery() {
         el.dataset.id = m.id;
 
         const pct = Math.min((m.currentHours / m.goalHours) * 100, 100);
-        const unitLabel = m.type === 'reps' ? 'Reps' : 'Hours';
+        const unitLabel = m.type === 'reps' ? 'Reps' : 'Hrs';
+
+        let tier = 'Bronze';
+        let tierColor = 'var(--mastery-bronze)';
+        if (pct >= 100) { tier = 'Master'; tierColor = 'var(--mastery-platinum)'; }
+        else if (pct >= 75) { tier = 'Platinum'; tierColor = 'var(--mastery-platinum)'; }
+        else if (pct >= 50) { tier = 'Gold'; tierColor = 'var(--mastery-gold)'; }
+        else if (pct >= 25) { tier = 'Silver'; tierColor = 'var(--mastery-silver)'; }
+
+        const lastLogText = m.lastLog ? formatRelativeTime(m.lastLog) : 'Never';
 
         el.innerHTML = `
-            <div class="drag-handle" style="position:absolute; top:5px; left:50%; transform:translateX(-50%);">⋮⋮</div>
-            <div class="mastery-header">
-                <span class="mastery-title">${m.name}</span>
-                <span style="color:${m.color}; font-weight:bold;">${Math.round(pct)}%</span>
+            <div class="drag-handle">⋮⋮</div>
+            <div class="mastery-tier-badge" style="--tier-color: ${tierColor}">${tier}</div>
+            
+            <div class="mastery-title-group">
+                <span class="mastery-title">${m.icon || '🧘'} ${m.name}</span>
+                <span class="mastery-subtitle">Last log: ${lastLogText}</span>
             </div>
-            <div class="mastery-stats">
-                <span>${parseFloat(m.currentHours).toFixed(1)} / ${m.goalHours} ${unitLabel}</span>
+
+            <div class="mastery-stats-v2">
+                <div class="stat-item-v2">
+                    <span class="stat-label-v2">Progress</span>
+                    <span class="stat-value-v2">${parseFloat(m.currentHours).toFixed(m.type === 'reps' ? 0 : 1)} ${unitLabel}</span>
+                </div>
+                <div class="stat-item-v2" style="align-items: flex-end;">
+                    <span class="stat-label-v2">Target</span>
+                    <span class="stat-value-v2">${m.goalHours} ${unitLabel}</span>
+                </div>
             </div>
-            <div class="mastery-progress-bg">
-                <div class="mastery-progress-fill" style="width:${pct}%"></div>
+
+            <div class="mastery-progress-section">
+                <div class="progress-header-v2">
+                    <span class="stat-label-v2">Mastery level</span>
+                    <span class="pct-v2">${Math.round(pct)}%</span>
+                </div>
+                <div class="mastery-progress-bg-v2">
+                    <div class="mastery-progress-fill-v2" style="width:${pct}%"></div>
+                </div>
             </div>
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn-sm btn-outline" style="flex:1; border-color:rgba(255,255,255,0.1);" onclick="openMasteryLogModal(${m.id})">Log</button>
-                <button class="btn-sm btn-outline" style="width:40px; border-color:rgba(255,255,255,0.1);" onclick="editMastery(${m.id})">✎</button>
-                <button class="btn-sm btn-danger" style="width:40px;" onclick="deleteMastery(${m.id})">×</button>
+
+            <div class="mastery-actions-v3">
+                <button class="btn-mastery-action" onclick="openMasteryLogModal(${m.id})">
+                    <span>➕</span> Log
+                </button>
+                <button class="btn-mastery-action" style="flex:0 0 45px;" onclick="editMastery(${m.id})" title="Edit">
+                    ✎
+                </button>
+                <button class="btn-mastery-action" style="flex:0 0 45px; color:var(--accent-red);" onclick="deleteMastery(${m.id})" title="Delete">
+                    ×
+                </button>
             </div>
         `;
 
@@ -3223,8 +3735,12 @@ function renderMastery() {
         el.addEventListener('dragstart', (e) => {
             e.dataTransfer.setData('text/plain', m.id);
             el.classList.add('dragging');
+            document.body.classList.add('no-scroll');
         });
-        el.addEventListener('dragend', () => el.classList.remove('dragging'));
+        el.addEventListener('dragend', () => {
+            el.classList.remove('dragging');
+            document.body.classList.remove('no-scroll');
+        });
         el.addEventListener('dragover', (e) => {
             e.preventDefault();
             el.classList.add('drag-over');
@@ -3244,6 +3760,15 @@ function renderMastery() {
                 renderMastery();
                 showNotification('Mastery order updated', 'normal');
             }
+        });
+
+        // Mobile Drag Support
+        addMobileDragSupport(el, '.drag-handle', (from, to) => {
+            const [moved] = AppState.mastery.splice(from, 1);
+            AppState.mastery.splice(to, 0, moved);
+            saveState();
+            renderMastery();
+            showNotification('Mastery order updated', 'normal');
         });
 
         grid.appendChild(el);
@@ -3283,25 +3808,35 @@ window.editMastery = (id) => {
     const m = AppState.mastery.find(x => x.id === id);
     if (!m) return;
 
-    // Reuse the creation modal but populate it
-    const modal = document.getElementById('masteryModal');
-    if (!modal) return;
+    window.editingMasteryId = id;
 
+    document.getElementById('masteryModalTitle').textContent = 'Edit Mastery Goal';
+    document.getElementById('masterySaveBtn').textContent = 'Update Mastery';
     document.getElementById('masteryName').value = m.name;
 
-    // Handle Type Radio
+    // Icon selection
+    const iconGrid = document.getElementById('masteryIconGrid');
+    if (iconGrid) {
+        iconGrid.querySelectorAll('.mastery-icon-option').forEach(o => o.classList.remove('active'));
+        const opt = iconGrid.querySelector(`[data-icon="${m.icon || '🧘'}"]`);
+        if (opt) opt.classList.add('active');
+        document.getElementById('masteryIcon').value = m.icon || '🧘';
+    }
+
+    // Goal type
     const typeRadio = document.querySelector(`input[name="masteryType"][value="${m.type}"]`);
-    if (typeRadio) typeRadio.checked = true;
+    if (typeRadio) {
+        typeRadio.checked = true;
+        toggleMasteryInput(m.type);
+    }
 
-    // Handle Goal
+    // Goal value
     const goalSelect = document.getElementById('masteryGoal');
-    const customInput = document.getElementById('customHours');
     const customGroup = document.getElementById('customHoursGroup');
+    const customInput = document.getElementById('customHours');
 
-    // Check if goal matches one of the presets
-    const preset = Array.from(goalSelect.options).find(opt => opt.value == m.goalHours);
-    if (preset && preset.value !== 'custom') {
-        goalSelect.value = m.goalHours;
+    if (['10', '100', '1000', '10000'].includes(String(m.goalHours))) {
+        goalSelect.value = String(m.goalHours);
         customGroup.style.display = 'none';
     } else {
         goalSelect.value = 'custom';
@@ -3309,50 +3844,17 @@ window.editMastery = (id) => {
         customInput.value = m.goalHours;
     }
 
-    // Handle Color
+    // Color
     const colorRadio = document.querySelector(`input[name="masteryColor"][value="${m.color}"]`);
     if (colorRadio) colorRadio.checked = true;
-
-    // Change Save Button to Update
-    const saveBtn = modal.querySelector('.btn-gold');
-    saveBtn.textContent = 'Update Goal';
-    saveBtn.onclick = () => updateMastery(id);
 
     window.openModal('masteryModal');
 };
 
 window.updateMastery = (id) => {
-    const m = AppState.mastery.find(x => x.id === id);
-    if (!m) return;
-
-    const name = document.getElementById('masteryName').value;
-    if (!name) return showNotification('Please enter a goal name', 'error');
-
-    const type = document.querySelector('input[name="masteryType"]:checked').value;
-    let goal;
-
-    if (document.getElementById('masteryGoal').value === 'custom') {
-        goal = parseInt(document.getElementById('customHours').value);
-        if (!goal || goal <= 0) return showNotification('Please enter a valid custom goal number', 'error');
-    } else {
-        goal = parseInt(document.getElementById('masteryGoal').value);
-    }
-
-    m.name = name;
-    m.type = type;
-    m.goalHours = goal;
-    m.color = document.querySelector('input[name="masteryColor"]:checked').value;
-
-    saveState();
-    renderMastery();
-    window.closeModal('masteryModal');
-    showNotification('Mastery goal updated!', 'gold');
-
-    // Reset button for next time
-    const modal = document.getElementById('masteryModal');
-    const saveBtn = modal.querySelector('.btn-gold');
-    saveBtn.textContent = 'Create Goal';
-    saveBtn.onclick = window.saveMastery;
+    // This is now handled by saveMastery but we keep it as a wrapper or redirect if needed
+    window.editingMasteryId = id;
+    saveMastery();
 };
 
 window.deleteMastery = (id) => {
@@ -3490,19 +3992,24 @@ window.logMasterySession = (id, amount) => {
     const m = AppState.mastery.find(x => x.id === id);
     if (m) {
         m.currentHours += amount;
+        m.lastLog = new Date().toISOString();
         saveState();
         renderMastery();
 
         let xp = 0;
         if (m.type === 'reps') {
-            xp = Math.round(amount * 0.5); // 1 rep = 0.5 XP (example)
+            xp = Math.round(Math.abs(amount) * 0.5);
         } else {
-            xp = Math.round(amount * 60); // 1 hour = 60 XP
+            xp = Math.round(amount * 60);
         }
 
-        addXP(xp);
-        logActivity('working', `Mastery: ${m.name} (${amount} ${m.type === 'reps' ? 'reps' : 'hrs'})`, xp);
-        showNotification(`Logged ${amount} for ${m.name}`, 'gold');
+        if (xp > 0) {
+            addXP(xp);
+            logActivity('working', `Mastery: ${m.name} (+${amount.toFixed(1)} ${m.type === 'reps' ? 'reps' : 'hrs'})`, xp);
+            showNotification(`Progress logged! +${xp} XP`, 'gold');
+        } else {
+            showNotification(`Progress updated`, 'normal');
+        }
     }
 };
 
@@ -3886,10 +4393,8 @@ window.exportAllData = () => {
     // Create a deep copy to avoid modifying the actual AppState
     const exportData = JSON.parse(JSON.stringify(AppState));
 
-    // Remove sensitive location data
-    if (exportData.settings && exportData.settings.location) {
-        delete exportData.settings.location;
-    }
+    // We keep location by default now as per user request for "perfect export"
+    // but we can add an optional flag later if needed.
 
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportData));
     const downloadAnchorNode = document.createElement('a');
@@ -4194,7 +4699,7 @@ window.exportSelectedFlows = () => {
     }
 };
 
-// Selective Import
+// Verified Backup System: Import Preview
 window.triggerSelectiveImport = () => {
     const input = document.createElement('input');
     input.type = 'file';
@@ -4207,7 +4712,7 @@ window.triggerSelectiveImport = () => {
         reader.onload = (evt) => {
             try {
                 const data = JSON.parse(evt.target.result);
-                openSelectiveImportModal(data);
+                showImportPreview(data);
             } catch (err) {
                 showNotification('Error reading file: ' + err.message, 'error');
             }
@@ -4217,131 +4722,14 @@ window.triggerSelectiveImport = () => {
     input.click();
 };
 
-function openSelectiveImportModal(data) {
-    const modalId = 'selectiveImportModal';
+function showImportPreview(data) {
+    const modalId = 'importPreviewModal';
     let modal = document.getElementById(modalId);
-
-    // Detect data type
-    const isSingleFlow = data.title && data.steps && Array.isArray(data.steps);
-    const isMultiFlowExport = data.type === 'arcana_flows_export' && data.flows;
-    const isFullBackup = data.user && (data.flows || data.workings || data.tasks);
 
     if (!modal) {
         modal = document.createElement('div');
         modal.id = modalId;
         modal.className = 'modal';
-        document.body.appendChild(modal);
-    }
-
-    let contentHtml = '';
-
-    if (isSingleFlow) {
-        // Single flow import
-        contentHtml = `
-            <p style="margin-bottom:15px;">Import this flow?</p>
-            <div class="card" style="padding:15px; margin-bottom:15px;">
-                <h4 style="color:var(--gold-primary);">${data.title}</h4>
-                <p style="color:var(--text-muted); font-size:0.9rem;">${data.description || 'No description'}</p>
-                <p style="font-size:0.85rem; margin-top:10px;">${data.steps.length} steps</p>
-            </div>
-        `;
-
-        modal.innerHTML = `
-            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Import Flow</h2>
-                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
-                </div>
-                <div class="modal-body">${contentHtml}</div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
-                    <button class="btn btn-gold" onclick="importSingleFlow(window.importTempData)">Import</button>
-                </div>
-            </div>
-        `;
-        window.importTempData = data;
-
-    } else if (isMultiFlowExport) {
-        // Multi-flow export import
-        contentHtml = `
-            <p style="margin-bottom:15px;">Select flows to import (${data.flows.length} available):</p>
-            <div style="margin-bottom:15px;">
-                <label style="display:flex; align-items:center; gap:10px; cursor:pointer;">
-                    <input type="checkbox" id="importSelectAll" onchange="toggleAllFlowsImport(this.checked)" checked>
-                    <span style="color:var(--gold-primary);">Select All</span>
-                </label>
-            </div>
-            <div id="importFlowList" style="max-height:250px; overflow-y:auto;">
-                ${data.flows.map((f, i) => `
-                    <div style="display:flex; align-items:center; gap:12px; padding:10px; border-bottom:1px solid rgba(255,255,255,0.1);">
-                        <input type="checkbox" class="flow-import-checkbox" data-flow-index="${i}" id="import-flow-${i}" checked>
-                        <label for="import-flow-${i}" style="flex:1; cursor:pointer;">
-                            <span>${f.title}</span>
-                            <span style="color:var(--text-muted); font-size:0.85rem; margin-left:10px;">${f.steps.length} steps</span>
-                        </label>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-
-        modal.innerHTML = `
-            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Import Flows</h2>
-                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
-                </div>
-                <div class="modal-body">${contentHtml}</div>
-                <div class="modal-footer">
-                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
-                    <button class="btn btn-gold" onclick="importSelectedFlowsFromExport()">Import Selected</button>
-                </div>
-            </div>
-        `;
-        window.importTempData = data;
-
-    } else if (isFullBackup) {
-        // Full backup - selective import
-        const counts = {
-            flows: data.flows?.length || 0,
-            workings: data.workings?.length || 0,
-            tasks: data.tasks?.length || 0,
-            journal: data.journal?.length || 0,
-            mastery: data.mastery?.length || 0
-        };
-
-        contentHtml = `
-            <p style="margin-bottom:15px;">This backup contains:</p>
-            <div style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
-                ${counts.flows > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
-                    <input type="checkbox" id="import-flows" checked>
-                    <span>Flows (${counts.flows})</span>
-                </label>` : ''}
-                ${counts.workings > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
-                    <input type="checkbox" id="import-workings" checked>
-                    <span>Workings (${counts.workings})</span>
-                </label>` : ''}
-                ${counts.tasks > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
-                    <input type="checkbox" id="import-tasks" checked>
-                    <span>Tasks (${counts.tasks})</span>
-                </label>` : ''}
-                ${counts.journal > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
-                    <input type="checkbox" id="import-journal" checked>
-                    <span>Journal Entries (${counts.journal})</span>
-                </label>` : ''}
-                ${counts.mastery > 0 ? `<label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
-                    <input type="checkbox" id="import-mastery" checked>
-                    <span>Mastery Goals (${counts.mastery})</span>
-                </label>` : ''}
-                <label style="display:flex; align-items:center; gap:10px; padding:10px; background:rgba(255,255,255,0.03); border-radius:8px; cursor:pointer;">
-                    <input type="checkbox" id="import-settings">
-                    <span>Settings & Profile</span>
-                </label>
-            </div>
-            <p style="color:var(--text-muted); font-size:0.85rem;">⚠️ Importing will merge with existing data. Duplicates may be created.</p>
-        `;
-
         modal.innerHTML = `
             <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
             <div class="modal-content">
@@ -4349,139 +4737,135 @@ function openSelectiveImportModal(data) {
                     <h2>Import Backup</h2>
                     <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
                 </div>
-                <div class="modal-body">${contentHtml}</div>
+                <div class="modal-body">
+                    <p style="margin-bottom:15px;">This file contains the following data:</p>
+                    <div id="importPreviewSummary" style="display:flex; flex-wrap:wrap; gap:15px; margin-bottom:20px;"></div>
+                    <p style="font-size:0.9em; color:var(--text-muted);">Existing items with the same ID or name will be skipped to prevent duplicates.</p>
+                </div>
                 <div class="modal-footer">
                     <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
-                    <button class="btn btn-gold" onclick="importSelectiveBackup()">Import Selected</button>
+                    <button class="btn btn-gold" id="confirmImportBtn">Import Selected</button>
                 </div>
             </div>
         `;
-        window.importTempData = data;
+        document.body.appendChild(modal);
+    }
 
-    } else {
-        showNotification('Unrecognized file format', 'error');
+    const summaryEl = document.getElementById('importPreviewSummary');
+    if (!summaryEl) return;
+
+    // Detect if multi-flow export format
+    const isMultiFlow = data.type === 'arcana_flows_export' && data.flows;
+    const flows = isMultiFlow ? data.flows : (data.steps ? [data] : (data.flows || []));
+
+    // Analyze data
+    const stats = [
+        { label: 'Flows', count: flows.length, id: 'flows' },
+        { label: 'Workings', count: data.workings?.length || 0, id: 'workings' },
+        { label: 'Tasks', count: data.tasks?.length || 0, id: 'tasks' },
+        { label: 'Journal', count: data.journal?.length || 0, id: 'journal' },
+        { label: 'Mastery', count: data.mastery?.length || 0, id: 'mastery' }
+    ].filter(s => s.count > 0);
+
+    if (stats.length === 0) {
+        showNotification('This file does not appear to contain valid Arcana data.', 'error');
         return;
+    }
+
+    summaryEl.innerHTML = stats.map(s => `
+        <div class="import-summary-item">
+            <span class="count">${s.count}</span>
+            <span class="label">${s.label}</span>
+        </div>
+    `).join('');
+
+    const confirmBtn = document.getElementById('confirmImportBtn');
+    if (confirmBtn) {
+        confirmBtn.onclick = () => {
+            executeImport(data);
+            window.closeModal('importPreviewModal');
+        };
     }
 
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
 }
 
-window.toggleAllFlowsImport = (checked) => {
-    document.querySelectorAll('.flow-import-checkbox').forEach(cb => cb.checked = checked);
-};
+function executeImport(data) {
+    let importedCount = 0;
+    const isMultiFlow = data.type === 'arcana_flows_export' && data.flows;
+    const flowsToImport = isMultiFlow ? data.flows : (data.steps ? [data] : (data.flows || []));
 
-window.importSingleFlow = (flow) => {
-    flow.id = Date.now();
-    flow.created = new Date().toISOString();
-    flow.completedDates = [];
-    AppState.flows.push(flow);
-    saveState();
-    renderFlows();
-    window.closeModal('selectiveImportModal');
-    showNotification(`Flow "${flow.title}" imported!`, 'gold');
-};
-
-window.importSelectedFlowsFromExport = () => {
-    const data = window.importTempData;
-    const selectedIndices = Array.from(document.querySelectorAll('.flow-import-checkbox:checked'))
-        .map(cb => parseInt(cb.dataset.flowIndex));
-
-    if (selectedIndices.length === 0) {
-        showNotification('Please select at least one flow', 'error');
-        return;
-    }
-
-    let count = 0;
-    selectedIndices.forEach(idx => {
-        const flow = { ...data.flows[idx] };
-        flow.id = Date.now() + count;
-        flow.created = new Date().toISOString();
-        flow.completedDates = [];
-        AppState.flows.push(flow);
-        count++;
-    });
-
-    saveState();
-    renderFlows();
-    window.closeModal('selectiveImportModal');
-    showNotification(`${count} flow(s) imported!`, 'gold');
-};
-
-window.importSelectiveBackup = () => {
-    const data = window.importTempData;
-    let importedCount = { flows: 0, workings: 0, tasks: 0, journal: 0, mastery: 0 };
-
-    // Import flows
-    if (document.getElementById('import-flows')?.checked && data.flows) {
-        data.flows.forEach(flow => {
-            flow.id = Date.now() + importedCount.flows;
-            flow.completedDates = flow.completedDates || [];
-            AppState.flows.push(flow);
-            importedCount.flows++;
+    // Merge logic
+    if (flowsToImport.length > 0) {
+        flowsToImport.forEach(f => {
+            if (!AppState.flows.find(existing => existing.id === f.id || existing.title === f.title)) {
+                const newFlow = { ...f, id: Date.now() + importedCount };
+                AppState.flows.push(newFlow);
+                importedCount++;
+            }
         });
     }
 
-    // Import workings
-    if (document.getElementById('import-workings')?.checked && data.workings) {
+    if (data.workings) {
         data.workings.forEach(w => {
-            w.id = Date.now() + 1000 + importedCount.workings;
-            AppState.workings.push(w);
-            importedCount.workings++;
+            if (!AppState.workings.find(existing => existing.id === w.id)) {
+                AppState.workings.push(w);
+                importedCount++;
+            }
         });
     }
 
-    // Import tasks
-    if (document.getElementById('import-tasks')?.checked && data.tasks) {
+    if (data.tasks) {
         data.tasks.forEach(t => {
-            t.id = Date.now() + 2000 + importedCount.tasks;
-            AppState.tasks.push(t);
-            importedCount.tasks++;
+            if (!AppState.tasks.find(existing => existing.id === t.id)) {
+                AppState.tasks.push(t);
+                importedCount++;
+            }
         });
     }
 
-    // Import journal
-    if (document.getElementById('import-journal')?.checked && data.journal) {
+    if (data.journal) {
         data.journal.forEach(j => {
-            j.id = Date.now() + 3000 + importedCount.journal;
-            AppState.journal.push(j);
-            importedCount.journal++;
+            if (!AppState.journal.find(existing => existing.date === j.date && existing.content === j.content)) {
+                AppState.journal.push(j);
+                importedCount++;
+            }
         });
     }
 
-    // Import mastery
-    if (document.getElementById('import-mastery')?.checked && data.mastery) {
+    if (data.mastery) {
         data.mastery.forEach(m => {
-            m.id = Date.now() + 4000 + importedCount.mastery;
-            AppState.mastery.push(m);
-            importedCount.mastery++;
+            if (!AppState.mastery.find(existing => existing.id === m.id || existing.name === m.name)) {
+                AppState.mastery.push(m);
+                importedCount++;
+            }
         });
     }
 
-    // Import settings
-    if (document.getElementById('import-settings')?.checked) {
-        if (data.user) {
-            AppState.user = { ...AppState.user, ...data.user };
-        }
-        if (data.settings) {
-            AppState.settings = { ...AppState.settings, ...data.settings };
-        }
+    // Settings merge (shallow)
+    if (data.settings) {
+        AppState.settings = { ...AppState.settings, ...data.settings };
+    }
+
+    if (data.user) {
+        AppState.user.xp = Math.max(AppState.user.xp, data.user.xp || 0);
+        AppState.user.level = Math.max(AppState.user.level, data.user.level || 1);
     }
 
     saveState();
 
     // Refresh all views
     renderFlows();
-    initWorkings();
+    if (typeof initWorkings === 'function') initWorkings();
     renderTasks();
-    renderJournal();
+    if (typeof renderJournal === 'function') renderJournal();
     renderMastery();
+    if (typeof renderActivityLog === 'function') renderActivityLog();
+    if (typeof updateXPDisplay === 'function') updateXPDisplay();
 
-    window.closeModal('selectiveImportModal');
-
-    const total = Object.values(importedCount).reduce((a, b) => a + b, 0);
-    showNotification(`Import complete! ${total} items imported.`, 'gold');
-};
+    showNotification(`Successfully merged ${importedCount} items from backup!`, 'gold');
+}
 
 
 window.confirmClearData = () => {
@@ -4492,297 +4876,12 @@ window.confirmClearData = () => {
 };
 
 // --- ASTRO & UTILS ---
+// Note: Astro functions (initAstro, updatePlanetaryHour, fetchMoonData, etc.) 
+// are now defined earlier in the file (around lines 500-800) to use offline calculations only.
 
-// Planetary Hours API Cache (in-memory)
-const planetaryHoursCache = {};
 
-async function fetchPlanetaryHours(date, lat, lng) {
-    // Format date as YYYY-MM-DD
-    const dateStr = date.toISOString().split('T')[0];
-    const cacheKey = `${dateStr}_${lat.toFixed(4)}_${lng.toFixed(4)}`;
 
-    // Return cached result if available
-    if (planetaryHoursCache[cacheKey]) {
-        return planetaryHoursCache[cacheKey];
-    }
 
-    try {
-        // Use https if page is served over https, otherwise http
-        const protocol = window.location.protocol === 'https:' ? 'https:' : 'http:';
-        const response = await fetch(`${protocol}//www.planetaryhoursapi.com/api/${dateStr}/${lat},${lng}`, {
-            cache: 'no-cache' // Prevent caching issues
-        });
-        if (!response.ok) throw new Error(`API returned ${response.status}`);
-
-        const data = await response.json();
-
-        // Cache the result
-        planetaryHoursCache[cacheKey] = data;
-
-        console.log('Planetary Hours API success:', data);
-
-        return data;
-    } catch (error) {
-        console.warn('Planetary Hours API failed:', error);
-        return null; // Will trigger fallback to manual calculation
-    }
-}
-
-function initAstro() {
-    // Moon Phase Calculation (Synodic Month)
-    const getMoonPhase = (date) => {
-        const synodic = 29.53058867;
-        const knownNewMoon = new Date('2000-01-06T18:14:00Z');
-        const diffDays = (date.getTime() - knownNewMoon.getTime()) / (1000 * 60 * 60 * 24);
-        const phase = diffDays % synodic;
-        return phase < 0 ? phase + synodic : phase;
-    };
-
-    const moonAge = getMoonPhase(new Date());
-    const synodic = 29.53058867;
-    const phaseStep = synodic / 8;
-    // Offset by half a step to center the phases
-    const phaseIdx = Math.floor((moonAge + (phaseStep / 2)) / phaseStep) % 8;
-
-    const phases = ['🌑 New Moon', '🌒 Waxing Crescent', '🌓 First Quarter', '🌔 Waxing Gibbous', '🌕 Full Moon', '🌖 Waning Gibbous', '🌗 Last Quarter', '🌘 Waning Crescent'];
-    document.getElementById('moonPhase').textContent = phases[phaseIdx];
-
-    // Planetary Hour Calculation
-    updatePlanetaryHour();
-}
-
-async function updatePlanetaryHour() {
-    const now = new Date();
-    const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon, ...
-
-    const planetNames = ['☉ Sun', '☽ Moon', '♂ Mars', '☿ Mercury', '♃ Jupiter', '♀ Venus', '♄ Saturn'];
-    // Chaldean Order for planetary hours: Saturn, Jupiter, Mars, Sun, Venus, Mercury, Moon
-    const chaldeanOrder = [6, 4, 2, 0, 5, 3, 1];
-
-    // Day Rulers: Sunday=Sun, Monday=Moon, Tuesday=Mars, Wednesday=Mercury, Thursday=Jupiter, Friday=Venus, Saturday=Saturn
-    const dayRulers = [0, 1, 2, 3, 4, 5, 6];
-
-    let currentPlanetIndex = 0;
-    let isDay = true;
-    let useAPI = false;
-
-    // Try API first if location is set
-    if (AppState.settings.location && AppState.settings.location.lat) {
-        const { lat, long } = AppState.settings.location;
-        const apiData = await fetchPlanetaryHours(now, lat, long);
-
-        if (apiData && apiData.planetary_hours) {
-            // API succeeded - use its data
-            useAPI = true;
-
-            // API returns current planetary hour info
-            const currentHour = apiData.planetary_hours.find(h => {
-                const hourStart = new Date(h.start);
-                const hourEnd = new Date(h.end);
-                return now >= hourStart && now < hourEnd;
-            });
-
-            if (currentHour) {
-                // Map API planet name to our index
-                const planetMap = {
-                    'Sun': 0, 'Moon': 1, 'Mars': 2, 'Mercury': 3,
-                    'Jupiter': 4, 'Venus': 5, 'Saturn': 6
-                };
-                currentPlanetIndex = planetMap[currentHour.planet] || 0;
-                isDay = currentHour.is_daytime;
-                console.log('Using API planetary hour:', currentHour.planet, isDay ? '(Day)' : '(Night)');
-            }
-        }
-    }
-
-    // Fallback to manual calculation if API failed or no location
-    if (!useAPI) {
-        console.log('Using manual calculation for planetary hours');
-        if (AppState.settings.location && AppState.settings.location.lat) {
-            // Accurate Calculation with manual sunrise/sunset
-            const { lat, long } = AppState.settings.location;
-            const sunTimes = getSunTimes(now, lat, long);
-
-            if (sunTimes) {
-                const { sunrise, sunset } = sunTimes;
-
-                // Check if before sunrise (belongs to previous day's night sequence)
-                if (now < sunrise) {
-                    // It's technically "yesterday" in magickal terms (night of previous day)
-                    const yesterday = new Date(now);
-                    yesterday.setDate(yesterday.getDate() - 1);
-                    const prevDayOfWeek = yesterday.getDay();
-                    const prevDayRuler = dayRulers[prevDayOfWeek];
-
-                    const prevSunTimes = getSunTimes(yesterday, lat, long);
-                    const prevSunset = prevSunTimes.sunset;
-
-                    const nightDuration = sunrise.getTime() - prevSunset.getTime();
-                    const nightHourLength = nightDuration / 12;
-                    const timeSinceSunset = now.getTime() - prevSunset.getTime();
-                    const currentNightHour = Math.floor(timeSinceSunset / nightHourLength); // 0-11
-
-                    const startIdx = chaldeanOrder.indexOf(prevDayRuler);
-                    const offset = 12 + currentNightHour;
-                    currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
-                    isDay = false;
-
-                } else if (now >= sunrise && now < sunset) {
-                    // Daytime
-                    const dayDuration = sunset.getTime() - sunrise.getTime();
-                    const dayHourLength = dayDuration / 12;
-                    const timeSinceSunrise = now.getTime() - sunrise.getTime();
-                    const currentDayHour = Math.floor(timeSinceSunrise / dayHourLength); // 0-11
-
-                    const currentDayRuler = dayRulers[dayOfWeek];
-                    const startIdx = chaldeanOrder.indexOf(currentDayRuler);
-                    currentPlanetIndex = chaldeanOrder[(startIdx + currentDayHour) % 7];
-                    isDay = true;
-
-                } else {
-                    // After sunset (Night of today)
-                    const nextDay = new Date(now);
-                    nextDay.setDate(nextDay.getDate() + 1);
-                    const nextSunTimes = getSunTimes(nextDay, lat, long);
-                    const nextSunrise = nextSunTimes.sunrise;
-
-                    const nightDuration = nextSunrise.getTime() - sunset.getTime();
-                    const nightHourLength = nightDuration / 12;
-                    const timeSinceSunset = now.getTime() - sunset.getTime();
-                    const currentNightHour = Math.floor(timeSinceSunset / nightHourLength); // 0-11
-
-                    const currentDayRuler = dayRulers[dayOfWeek];
-                    const startIdx = chaldeanOrder.indexOf(currentDayRuler);
-                    const offset = 12 + currentNightHour;
-                    currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
-                    isDay = false;
-                }
-            }
-        } else {
-            // Fallback: Simple fixed hours (6am-6pm day, 6pm-6am night)
-            const hour = now.getHours();
-
-            if (hour < 6) {
-                // Night of previous day
-                const prevDay = (dayOfWeek + 6) % 7;
-                const prevRuler = dayRulers[prevDay];
-                const startIdx = chaldeanOrder.indexOf(prevRuler);
-                const offset = 18 + hour; // e.g. 2am = 20th hour (12 day + 6 night + 2)
-                currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
-                isDay = false;
-            } else {
-                // Same day
-                const currentRuler = dayRulers[dayOfWeek];
-                const startIdx = chaldeanOrder.indexOf(currentRuler);
-                const offset = hour - 6;
-                currentPlanetIndex = chaldeanOrder[(startIdx + offset) % 7];
-                isDay = (hour < 18);
-            }
-        }
-
-        // Show notification if API failed but we have location
-        if (AppState.settings.location && AppState.settings.location.lat) {
-            console.warn('Planetary Hours API unavailable, using manual calculation');
-        }
-    }
-
-    const planetName = planetNames[currentPlanetIndex];
-    const planetEl = document.getElementById('currentPlanet');
-    if (planetEl) {
-        planetEl.textContent = planetName + (isDay ? " (Day)" : " (Night)");
-    }
-
-    // Display location name in the widget if available
-    const planetLabelEl = document.querySelector('.planet-label');
-    if (planetLabelEl && AppState.settings.location && AppState.settings.location.name) {
-        const cityName = AppState.settings.location.name.split(',')[0]; // Get city name only
-        planetLabelEl.textContent = `Planetary Hour - ${cityName}`;
-    } else if (planetLabelEl) {
-        planetLabelEl.textContent = 'Planetary Hour - Default';
-        // Show prompt to set location if not set
-        if (!AppState.settings.location || !AppState.settings.location.lat) {
-            setTimeout(() => {
-                if (!localStorage.getItem('location_prompt_shown')) {
-                    showNotification('Set your location in Settings for accurate planetary hours', 'normal');
-                    localStorage.setItem('location_prompt_shown', 'true');
-                }
-            }, 3000);
-        }
-    }
-}
-
-// Simple Sun Calc (Sunrise Equation)
-function getSunTimes(date, lat, lng) {
-    // Source: https://en.wikipedia.org/wiki/Sunrise_equation
-    // Simplified implementation
-
-    const PI = Math.PI;
-    const DR = PI / 180;
-    const RD = 180 / PI;
-
-    const zenith = 90.8333; // Official
-
-    // Day of the year
-    const start = new Date(date.getFullYear(), 0, 0);
-    const diff = date - start;
-    const oneDay = 1000 * 60 * 60 * 24;
-    const N = Math.floor(diff / oneDay);
-
-    // Convert lng to hour value and calculate approximate time
-    const lngHour = lng / 15;
-
-    const calculate = (isSunrise) => {
-        const t = N + ((isSunrise ? 6 : 18) - lngHour) / 24;
-        const M = (0.9856 * t) - 3.289;
-
-        // Sun's true longitude
-        let L = M + (1.916 * Math.sin(M * DR)) + (0.020 * Math.sin(2 * M * DR)) + 282.634;
-        L = (L + 360) % 360; // Normalize
-
-        // Right ascension
-        let RA = RD * Math.atan(0.91764 * Math.tan(L * DR));
-        RA = (RA + 360) % 360;
-
-        // RA needs to be in same quadrant as L
-        const Lquadrant = (Math.floor(L / 90)) * 90;
-        const RAquadrant = (Math.floor(RA / 90)) * 90;
-        RA = RA + (Lquadrant - RAquadrant);
-        RA = RA / 15;
-
-        // Sun's declination
-        const sinDec = 0.39782 * Math.sin(L * DR);
-        const cosDec = Math.cos(Math.asin(sinDec));
-
-        // Sun's local hour angle
-        const cosH = (Math.cos(zenith * DR) - (sinDec * Math.sin(lat * DR))) / (cosDec * Math.cos(lat * DR));
-
-        if (cosH > 1 || cosH < -1) return null; // Sun never rises/sets
-
-        const H = (isSunrise ? (360 - RD * Math.acos(cosH)) : (RD * Math.acos(cosH))) / 15;
-
-        // Local mean time of rising/setting
-        const T = H + RA - (0.06571 * t) - 6.622;
-
-        // Adjust back to UTC
-        let UT = T - lngHour;
-        UT = (UT + 24) % 24;
-
-        // Convert to local time object
-        const result = new Date(date);
-        result.setUTCHours(Math.floor(UT));
-        result.setUTCMinutes(Math.floor((UT % 1) * 60));
-        result.setUTCSeconds(0);
-
-        return result;
-    };
-
-    const sunrise = calculate(true);
-    const sunset = calculate(false);
-
-    if (!sunrise || !sunset) return null;
-
-    return { sunrise, sunset };
-}
 
 function renderBadges() {
     const grid = document.getElementById('badgesGrid');
@@ -5370,4 +5469,91 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function formatRelativeTime(dateStr) {
+    if (!dateStr) return 'Never';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'Just now';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+    if (diffInSeconds < 172800) return 'Yesterday';
+
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+// --- MOBILE DRAG SUPPORT ---
+function addMobileDragSupport(element, handleSelector, onReorder) {
+    const handle = element.querySelector(handleSelector);
+    if (!handle) return;
+
+    let startY = 0;
+    let draggedItem = null;
+    let initialIndex = 0;
+
+    handle.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        document.body.classList.add('no-scroll');
+
+        draggedItem = element;
+        startY = e.touches[0].clientY;
+
+        draggedItem.classList.add('dragging');
+        draggedItem.style.opacity = '0.5';
+
+        const parent = draggedItem.parentNode;
+        initialIndex = Array.from(parent.children).indexOf(draggedItem);
+    }, { passive: false });
+
+    handle.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        if (!draggedItem) return;
+
+        const touch = e.touches[0];
+
+        // Temporarily disable pointer events on the item we're dragging
+        // so we can see what's actually underneath the finger
+        const originalPointerEvents = draggedItem.style.pointerEvents;
+        draggedItem.style.pointerEvents = 'none';
+
+        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+        const closestItem = targetElement?.closest(element.tagName);
+
+        // Restore pointer events
+        draggedItem.style.pointerEvents = originalPointerEvents;
+
+        if (closestItem && closestItem !== draggedItem && closestItem.parentNode === draggedItem.parentNode) {
+            const parent = draggedItem.parentNode;
+            const fromIndex = Array.from(parent.children).indexOf(draggedItem);
+            const toIndex = Array.from(parent.children).indexOf(closestItem);
+
+            if (fromIndex < toIndex) {
+                parent.insertBefore(draggedItem, closestItem.nextSibling);
+            } else {
+                parent.insertBefore(draggedItem, closestItem);
+            }
+
+            // Tactile feedback
+            if (navigator.vibrate) navigator.vibrate(10);
+        }
+    }, { passive: false });
+
+    handle.addEventListener('touchend', (e) => {
+        document.body.classList.remove('no-scroll');
+        if (draggedItem) {
+            draggedItem.classList.remove('dragging');
+            draggedItem.style.opacity = '';
+
+            const parent = draggedItem.parentNode;
+            const newIndex = Array.from(parent.children).indexOf(draggedItem);
+
+            if (initialIndex !== newIndex && onReorder) {
+                onReorder(initialIndex, newIndex);
+            }
+        }
+        draggedItem = null;
+    });
 }

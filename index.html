@@ -29,6 +29,9 @@
     <!-- Particle Background -->
     <div class="particles" id="particles"></div>
 
+    <!-- Sidebar Overlay (Mobile) -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
         <button class="sidebar-close-btn">×</button>
@@ -50,7 +53,7 @@
                 <span class="xp-text"><span id="currentXP">0</span> / <span id="nextLevelXP">100</span> XP</span>
             </div>
 
-            <button class="sidebar-toggle" id="sidebarToggle">
+            <button class="sidebar-toggle" id="sidebarToggleInternal">
                 <span></span>
                 <span></span>
                 <span></span>
@@ -395,62 +398,104 @@
                         <button class="mode-btn" data-mode="long">Long Break</button>
                     </div>
 
-                    <div class="pomodoro-timer">
-                        <svg class="timer-ring" viewBox="0 0 200 200">
-                            <circle class="timer-ring-bg" cx="100" cy="100" r="90" />
-                            <circle class="timer-ring-progress" cx="100" cy="100" r="90" id="pomodoroRing" />
-                        </svg>
-                        <div class="timer-display">
-                            <span class="timer-time" id="pomodoroTime">25:00</span>
-                            <span class="timer-label" id="pomodoroLabel">Focus Time</span>
+                    <!-- Pomodoro V2: Focus Panel -->
+                    <div class="pomodoro-focus-panel">
+                        <div class="pomo-background-glow" id="pomoGlow"></div>
+
+                        <div class="pomo-mode-badge" id="pomoModeBadge">Ready to Focus</div>
+
+                        <div class="pomo-timer-container">
+                            <svg class="pomo-timer-ring" viewBox="0 0 240 240">
+                                <circle class="ring-bg" cx="120" cy="120" r="110" />
+                                <circle class="ring-fill" cx="120" cy="120" r="110" id="pomodoroRing" />
+                            </svg>
+                            <div class="pomo-timer-display-v2" id="timerDisplay">25:00</div>
+                        </div>
+
+                        <div class="pomo-linked-goal" id="pomoLinkedGoalDisplay" style="display:none;">
+                            <div class="goal-dot" id="pomoGoalDot"></div>
+                            <span id="pomoLinkedGoalName">Linked Goal</span>
+                        </div>
+
+                        <div class="pomo-controls-v2">
+                            <button class="btn-pomo-main" onclick="resetPomodoro()" title="Reset">
+                                <span>🔄</span>
+                            </button>
+                            <button class="btn-pomo-main primary" id="pomoToggleBtn" onclick="togglePomodoro()">
+                                <span>▶️</span>
+                            </button>
+                            <button class="btn-pomo-main" onclick="openModal('pomoSettingsModal')" title="Settings">
+                                <span>⚙️</span>
+                            </button>
+                        </div>
+
+                        <div class="pomo-session-stats">
+                            <div class="pomo-stat-item">
+                                <span class="pomo-stat-val" id="pomsDoneToday">0</span>
+                                <span class="pomo-stat-lbl">Sessions</span>
+                            </div>
+                            <div class="pomo-stat-item">
+                                <span class="pomo-stat-val" id="totalPoms">0</span>
+                                <span class="pomo-stat-lbl">Total Units</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="pomodoro-controls">
-                        <button class="btn btn-lg btn-gold" id="pomodoroStartBtn" onclick="togglePomodoro()">
-                            Start
-                        </button>
-                        <button class="btn btn-lg btn-outline" onclick="resetPomodoro()">
-                            Reset
-                        </button>
-                    </div>
+                    <!-- Pomodoro Settings Modal -->
+                    <div class="modal" id="pomoSettingsModal">
+                        <div class="modal-overlay" onclick="closeModal('pomoSettingsModal')"></div>
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h2>Focus Settings</h2>
+                                <button class="modal-close" onclick="closeModal('pomoSettingsModal')">×</button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="setting-row-premium">
+                                    <div class="setting-label-group">
+                                        <label>Work Duration</label>
+                                        <span class="setting-value" id="workDurationVal">25</span>
+                                        <span class="setting-unit">min</span>
+                                    </div>
+                                    <input type="range" id="workDuration" value="25" min="1" max="120"
+                                        oninput="document.getElementById('workDurationVal').textContent = this.value">
+                                </div>
+                                <div class="setting-row-premium">
+                                    <div class="setting-label-group">
+                                        <label>Short Break</label>
+                                        <span class="setting-value" id="shortBreakVal">5</span>
+                                        <span class="setting-unit">min</span>
+                                    </div>
+                                    <input type="range" id="shortBreak" value="5" min="1" max="30"
+                                        oninput="document.getElementById('shortBreakVal').textContent = this.value">
+                                </div>
+                                <div class="setting-row-premium">
+                                    <div class="setting-label-group">
+                                        <label>Long Break</label>
+                                        <span class="setting-value" id="longBreakVal">15</span>
+                                        <span class="setting-unit">min</span>
+                                    </div>
+                                    <input type="range" id="longBreak" value="15" min="1" max="60"
+                                        oninput="document.getElementById('longBreakVal').textContent = this.value">
+                                </div>
 
-                    <div class="pomodoro-stats">
-                        <div class="pomo-stat">
-                            <span class="pomo-stat-value" id="pomodoroCount">0</span>
-                            <span class="pomo-stat-label">Pomodoros Today</span>
-                        </div>
-                        <div class="pomo-stat">
-                            <span class="pomo-stat-value" id="pomodoroTotal">0</span>
-                            <span class="pomo-stat-label">Total Focus Time</span>
+                                <div class="form-group" style="margin-top:20px;">
+                                    <label
+                                        style="display:block; margin-bottom:10px; color:var(--gold-primary); font-weight:600;">Link
+                                        to Mastery Goal</label>
+                                    <select id="pomoMasteryLink" class="input">
+                                        <option value="">None (General Focus)</option>
+                                    </select>
+                                    <p class="setting-hint">Sessions will automatically add progress to the selected
+                                        goal.</p>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-gold" onclick="closeModal('pomoSettingsModal')">Save
+                                    Settings</button>
+                            </div>
                         </div>
                     </div>
                 </div>
-
-                <div class="pomodoro-settings card">
-                    <h3>Timer Settings</h3>
-                    <div class="setting-row">
-                        <label>Work Duration: <span id="workDurationVal">25</span> min</label>
-                        <input type="range" id="workDuration" value="25" min="1" max="120"
-                            oninput="document.getElementById('workDurationVal').textContent = this.value">
-                    </div>
-                    <div class="setting-row">
-                        <label>Short Break: <span id="shortBreakVal">5</span> min</label>
-                        <input type="range" id="shortBreak" value="5" min="1" max="30"
-                            oninput="document.getElementById('shortBreakVal').textContent = this.value">
-                    </div>
-                    <div class="setting-row">
-                        <label>Long Break: <span id="longBreakVal">15</span> min</label>
-                        <input type="range" id="longBreak" value="15" min="1" max="60"
-                            oninput="document.getElementById('longBreakVal').textContent = this.value">
-                    </div>
-                    <div class="setting-row">
-                        <label>Long Break After: <span id="longBreakAfterVal">4</span> pomodoros</label>
-                        <input type="range" id="longBreakAfter" value="4" min="1" max="10"
-                            oninput="document.getElementById('longBreakAfterVal').textContent = this.value">
-                    </div>
-                </div>
-            </div>
         </section>
 
         <!-- Mastery Page -->
@@ -986,46 +1031,69 @@
         <div class="modal-overlay" onclick="closeModal('masteryModal')"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Create Mastery Goal</h2>
+                <h2 id="masteryModalTitle">New Mastery Goal</h2>
                 <button class="modal-close" onclick="closeModal('masteryModal')">×</button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
-                    <label>Skill Name</label>
-                    <input type="text" id="masteryName" placeholder="e.g., Meditation" class="input">
+                    <label>Skill / Habit Name</label>
+                    <input type="text" id="masteryName" placeholder="e.g., Deep Meditation" class="input">
                 </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Icon</label>
+                        <div class="mastery-icon-grid" id="masteryIconGrid">
+                            <div class="mastery-icon-option active" data-icon="🧘">🧘</div>
+                            <div class="mastery-icon-option" data-icon="⚔️">⚔️</div>
+                            <div class="mastery-icon-option" data-icon="🧪">🧪</div>
+                            <div class="mastery-icon-option" data-icon="📚">📚</div>
+                            <div class="mastery-icon-option" data-icon="🎨">🎨</div>
+                            <div class="mastery-icon-option" data-icon="🎵">🎵</div>
+                            <div class="mastery-icon-option" data-icon="🏋️">🏋️</div>
+                            <div class="mastery-icon-option" data-icon="💻">💻</div>
+                            <div class="mastery-icon-option" data-icon="🌿">🌿</div>
+                            <div class="mastery-icon-option" data-icon="✨">✨</div>
+                        </div>
+                        <input type="hidden" id="masteryIcon" value="🧘">
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Goal Type</label>
-                    <div class="mood-selector">
-                        <label class="mood-option"
-                            style="width:auto; padding:5px 15px; border-radius:4px; border:1px solid var(--border-color);">
+                    <div style="display:flex; gap:10px;">
+                        <label class="btn-mastery-action" style="flex:1; cursor:pointer; padding:12px;">
                             <input type="radio" name="masteryType" value="hours" checked
-                                onchange="toggleMasteryInput('hours')">
-                            <span>Hours</span>
+                                onchange="toggleMasteryInput('hours')" style="display:none;">
+                            <span>⏳ Time (Hours)</span>
                         </label>
-                        <label class="mood-option"
-                            style="width:auto; padding:5px 15px; border-radius:4px; border:1px solid var(--border-color);">
-                            <input type="radio" name="masteryType" value="reps" onchange="toggleMasteryInput('reps')">
-                            <span>Reps/Count</span>
+                        <label class="btn-mastery-action" style="flex:1; cursor:pointer; padding:12px;">
+                            <input type="radio" name="masteryType" value="reps" onchange="toggleMasteryInput('reps')"
+                                style="display:none;">
+                            <span>🔢 Count (Reps)</span>
                         </label>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label id="masteryGoalLabel">Goal (Hours)</label>
-                    <select id="masteryGoal" class="input" onchange="toggleCustomGoal()">
-                        <option value="10">10</option>
-                        <option value="100">100</option>
-                        <option value="1000">1,000</option>
-                        <option value="10000">10,000</option>
-                        <option value="custom">Custom</option>
-                    </select>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label id="masteryGoalLabel">Target Goal</label>
+                        <select id="masteryGoal" class="input" onchange="toggleCustomGoal()">
+                            <option value="10">10 (Novice)</option>
+                            <option value="100">100 (Adept)</option>
+                            <option value="1000">1,000 (Expert)</option>
+                            <option value="10000">10,000 (Master)</option>
+                            <option value="custom">Custom Value</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="customHoursGroup" style="display:none">
+                        <label>Custom Goal</label>
+                        <input type="number" id="customHours" min="1" class="input" placeholder="Enter number">
+                    </div>
                 </div>
-                <div class="form-group" id="customHoursGroup" style="display:none">
-                    <label>Custom Goal</label>
-                    <input type="number" id="customHours" min="1" class="input" placeholder="Enter custom number">
-                </div>
+
                 <div class="form-group">
-                    <label>Color</label>
+                    <label>Theme Color</label>
                     <div class="color-picker">
                         <label class="color-option"><input type="radio" name="masteryColor" value="#d4af37"
                                 checked><span style="background:#d4af37"></span></label>
@@ -1042,7 +1110,7 @@
             </div>
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('masteryModal')">Cancel</button>
-                <button class="btn btn-gold" onclick="saveMastery()">Create Goal</button>
+                <button class="btn btn-gold" id="masterySaveBtn" onclick="saveMastery()">Create Mastery</button>
             </div>
         </div>
     </div>
@@ -1234,6 +1302,32 @@
     <div class="toast-container" id="toastContainer"></div>
 
     <script src="app.js"></script>
+    <!-- Import Preview Modal -->
+    <div class="modal" id="importPreviewModal">
+        <div class="modal-overlay" onclick="closeModal('importPreviewModal')"></div>
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Backup Preview</h2>
+                <button class="modal-close" onclick="closeModal('importPreviewModal')">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-bottom:20px; color:var(--text-muted);">Review the contents of this backup before
+                    merging it with your local data.</p>
+                <div id="importPreviewSummary" class="import-summary-grid">
+                    <!-- Summary items will be injected here -->
+                </div>
+                <div
+                    style="margin-top:20px; padding:15px; background:rgba(212, 175, 55, 0.05); border:1px solid var(--border-gold); border-radius:12px;">
+                    <p style="font-size:0.85rem; color:var(--gold-primary);"><span style="margin-right:8px;">ℹ️</span>
+                        This will merge existing data. Duplicate flows will be skipped.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('importPreviewModal')">Cancel</button>
+                <button class="btn btn-gold" id="confirmImportBtn">Confirm & Merge</button>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
