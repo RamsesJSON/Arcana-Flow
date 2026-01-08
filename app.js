@@ -61,6 +61,19 @@ const XP_LEVEL_BASE = (typeof CONFIG !== 'undefined' && CONFIG.LEVEL_SYSTEM) ? C
 const XP_LEVEL_MULTIPLIER = (typeof CONFIG !== 'undefined' && CONFIG.LEVEL_SYSTEM) ? CONFIG.LEVEL_SYSTEM.MULTIPLIER : 1.5;
 const LEVEL_TITLES = (typeof CONFIG !== 'undefined' && CONFIG.LEVEL_SYSTEM) ? CONFIG.LEVEL_SYSTEM.TITLES : ["Newbie", "Initiate", "Adept"];
 
+// Helper functions for XP/Level system
+function getXPForLevel(level) {
+    if (level <= 1) return 0;
+    return Math.floor(XP_LEVEL_BASE * Math.pow(XP_LEVEL_MULTIPLIER, level - 2));
+}
+
+function getLevelTitle(level) {
+    if (level <= 0) return LEVEL_TITLES[0] || 'Neophyte';
+    const rankInterval = (typeof CONFIG !== 'undefined' && CONFIG.LEVEL_SYSTEM) ? CONFIG.LEVEL_SYSTEM.RANK_INTERVAL : 50;
+    const index = Math.min(Math.floor((level - 1) / rankInterval), LEVEL_TITLES.length - 1);
+    return LEVEL_TITLES[index] || `Level ${level}`;
+}
+
 const BADGES = [
     { id: 'novice', name: 'Novice Zevist', icon: '🌱', desc: 'Reach Level 2', condition: (s) => s.user.level >= 2 },
     { id: 'streak_3', name: 'Consistency', icon: '🔥', desc: '3 Day Streak', condition: (s) => s.user.streak >= 3 },
@@ -84,11 +97,17 @@ document.addEventListener('DOMContentLoaded', () => {
     initJournal();
     initMastery();
     initCalendar();
+    initWeeklySchedule();
     initSettings();
 
     checkStreak();
     autoResetFlowCompletions();
     renderBadges();
+    
+    // Initialize Lucide icons
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 
     // Keyboard shortcuts
     initKeyboardShortcuts();
@@ -244,7 +263,13 @@ window.navigateTo = (pageId) => {
     }
 };
 
-window.openModal = (id) => document.getElementById(id).classList.add('active');
+window.openModal = (id) => {
+    document.getElementById(id).classList.add('active');
+    // Re-initialize Lucide icons for modal content
+    if (typeof lucide !== 'undefined') {
+        setTimeout(() => lucide.createIcons(), 10);
+    }
+};
 window.closeModal = (id) => document.getElementById(id).classList.remove('active');
 
 // Styled confirm modal to replace browser confirm()
@@ -274,6 +299,9 @@ function loadState() {
         AppState.journal = parsed.journal || [];
         AppState.breathingPatterns = parsed.breathingPatterns || [];
         AppState.schedule = parsed.schedule || [];
+        AppState.weeklySchedule = parsed.weeklySchedule || [];
+        AppState.routineCompletions = parsed.routineCompletions || {};
+        AppState.lastRoutineWeek = parsed.lastRoutineWeek || '';
         AppState.settings = { ...AppState.settings, ...parsed.settings };
         AppState.history = parsed.history || {};
         AppState.activityLog = parsed.activityLog || [];
@@ -315,6 +343,9 @@ function saveState() {
             journal: AppState.journal,
             breathingPatterns: AppState.breathingPatterns || [],
             schedule: AppState.schedule || [],
+            weeklySchedule: AppState.weeklySchedule || [],
+            routineCompletions: AppState.routineCompletions || {},
+            lastRoutineWeek: AppState.lastRoutineWeek || '',
             settings: AppState.settings,
             history: AppState.history,
             activityLog: AppState.activityLog || [],
@@ -506,12 +537,424 @@ function getFlowsForDate(dateObj) {
 }
 
 function initDashboard() {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-US', options);
+    // Update hero section with date info
+    const now = new Date();
+    const hour = now.getHours();
+    
+    // Time-based greeting
+    let greeting = 'Good Evening';
+    if (hour < 12) greeting = 'Good Morning';
+    else if (hour < 17) greeting = 'Good Afternoon';
+    
+    const greetingEl = document.getElementById('greetingTime');
+    if (greetingEl) greetingEl.textContent = greeting;
+    
+    // Update hero date display
+    const dayEl = document.getElementById('heroDay');
+    const weekdayEl = document.getElementById('heroWeekday');
+    const monthEl = document.getElementById('heroMonth');
+    
+    if (dayEl) dayEl.textContent = now.getDate().toString().padStart(2, '0');
+    if (weekdayEl) weekdayEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+    if (monthEl) monthEl.textContent = now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    
+    // Update motivational subtitle
+    updateHeroSubtitle();
+    
+    // Setup focus timer presets
+    setupFocusPresets();
+    
+    // Setup cosmic insight
+    refreshCosmicInsight();
 
     renderTodaySchedule();
+    renderDashboardTasks();
+    renderDashboardWorkings();
+    renderDashboardActivity();
     updateStatsDisplay();
+    updateDashboardProgressRings();
+    updateDashboardXP();
+    updateWorkingsStats();
+    
+    // Re-init lucide icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
+
+// Update hero subtitle with motivational messages
+function updateHeroSubtitle() {
+    const subtitles = [
+        "The stars align in your favor today",
+        "Every moment is a fresh beginning",
+        "Your dedication shapes your destiny",
+        "Magic flows through focused intention",
+        "Small steps lead to great transformations",
+        "Today's practice builds tomorrow's mastery",
+        "The universe rewards consistent effort",
+        "Your journey continues with each breath"
+    ];
+    const subtitleEl = document.getElementById('heroSubtitle');
+    if (subtitleEl) {
+        subtitleEl.textContent = subtitles[Math.floor(Math.random() * subtitles.length)];
+    }
+}
+
+// Dashboard Progress Rings
+function updateDashboardProgressRings() {
+    // Streak ring (max 30 days = full circle)
+    const streakRing = document.getElementById('streakRingProgress');
+    if (streakRing) {
+        const streak = AppState.streak || 0;
+        const streakPercent = Math.min(streak / 30, 1);
+        const circumference = 2 * Math.PI * 45;
+        streakRing.style.strokeDasharray = circumference;
+        streakRing.style.strokeDashoffset = circumference * (1 - streakPercent);
+    }
+    
+    // Update streak message
+    const streakMsg = document.getElementById('streakMessage');
+    if (streakMsg) {
+        const streak = AppState.streak || 0;
+        if (streak === 0) streakMsg.textContent = 'Start your streak today!';
+        else if (streak < 7) streakMsg.textContent = 'Keep the momentum going!';
+        else if (streak < 30) streakMsg.textContent = 'You\'re on fire! 🔥';
+        else streakMsg.textContent = 'Incredible dedication!';
+    }
+    
+    // Today's metrics rings (goal-based)
+    const todayStats = AppState.history[new Date().toISOString().split('T')[0]] || { flows: 0 };
+    
+    // Flows ring (goal: 3 flows)
+    const flowsRing = document.getElementById('flowsRingProgress');
+    if (flowsRing) {
+        const flowsPercent = Math.min(todayStats.flows / 3, 1);
+        flowsRing.style.strokeDashoffset = 100 * (1 - flowsPercent);
+    }
+    
+    // Time ring (goal: 60 minutes)
+    const timeRing = document.getElementById('timeRingProgress');
+    if (timeRing) {
+        const timePercent = Math.min(AppState.totalPracticeTime / 3600, 1);
+        timeRing.style.strokeDashoffset = 100 * (1 - timePercent);
+    }
+    
+    // Pomodoros ring (goal: 4)
+    const pomsRing = document.getElementById('pomsRingProgress');
+    if (pomsRing) {
+        const pomsPercent = Math.min((AppState.pomodorosToday || 0) / 4, 1);
+        pomsRing.style.strokeDashoffset = 100 * (1 - pomsPercent);
+    }
+    
+    // Update XP display
+    updateDashboardXP();
+    
+    // Update workings stats
+    updateWorkingsStats();
+}
+
+// Update dashboard XP
+function updateDashboardXP() {
+    const levelEl = document.getElementById('dashLevel');
+    const titleEl = document.getElementById('dashLevelTitle');
+    const xpBarEl = document.getElementById('dashXPBar');
+    const currentXPEl = document.getElementById('dashCurrentXP');
+    const nextLevelXPEl = document.getElementById('dashNextLevelXP');
+    
+    if (levelEl) levelEl.textContent = AppState.user.level || 1;
+    if (titleEl) titleEl.textContent = getLevelTitle(AppState.user.level || 1);
+    
+    const xpForCurrentLevel = getXPForLevel(AppState.user.level || 1);
+    const xpForNextLevel = getXPForLevel((AppState.user.level || 1) + 1);
+    const currentLevelXP = (AppState.user.xp || 0) - xpForCurrentLevel;
+    const neededXP = xpForNextLevel - xpForCurrentLevel;
+    const xpPercent = Math.min(currentLevelXP / neededXP * 100, 100);
+    
+    if (xpBarEl) xpBarEl.style.width = xpPercent + '%';
+    if (currentXPEl) currentXPEl.textContent = currentLevelXP;
+    if (nextLevelXPEl) nextLevelXPEl.textContent = neededXP;
+}
+
+// Update workings stats
+function updateWorkingsStats() {
+    const activeCount = document.getElementById('activeWorkings');
+    const plannedCount = document.getElementById('plannedWorkings');
+    const completedCount = document.getElementById('completedWorkings');
+    
+    const active = AppState.workings.filter(w => w.status === 'active').length;
+    const planned = AppState.workings.filter(w => w.status === 'planned').length;
+    const completed = AppState.workings.filter(w => w.status === 'completed').length;
+    
+    if (activeCount) activeCount.textContent = active;
+    if (plannedCount) plannedCount.textContent = planned;
+    if (completedCount) completedCount.textContent = completed;
+}
+
+// Render dashboard tasks (high priority tasks)
+function renderDashboardTasks() {
+    const container = document.getElementById('dashboardTasks');
+    if (!container) return;
+    
+    // Get high priority uncompleted tasks from AppState.tasks
+    const priorityTasks = (AppState.tasks || [])
+        .filter(t => t.status !== 'done' && (t.priority === 'high' || t.priority === 'medium'))
+        .sort((a, b) => {
+            const priorityOrder = { high: 0, medium: 1, low: 2 };
+            return (priorityOrder[a.priority] || 2) - (priorityOrder[b.priority] || 2);
+        })
+        .slice(0, 5);
+    
+    if (priorityTasks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-mini">
+                <i data-lucide="inbox"></i>
+                <p>No priority tasks</p>
+                <button class="btn-mini" onclick="navigateTo('todos')">
+                    <i data-lucide="plus"></i> Add Task
+                </button>
+            </div>
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+    
+    container.innerHTML = priorityTasks.map(task => `
+        <div class="priority-task-item" data-task-id="${task.id}">
+            <span class="task-priority-dot ${task.priority}"></span>
+            <div class="task-info">
+                <span class="task-title">${task.name || task.title}</span>
+                ${task.category ? `<span class="task-category">${task.category}</span>` : ''}
+            </div>
+            <button class="task-check" onclick="quickCompleteTask('${task.id}')">
+                <i data-lucide="check"></i>
+            </button>
+        </div>
+    `).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Quick complete task from dashboard
+window.quickCompleteTask = function(taskId) {
+    const task = (AppState.tasks || []).find(t => t.id == taskId);
+    if (task) {
+        task.status = 'done';
+        task.completedAt = new Date().toISOString();
+        saveState();
+        renderDashboardTasks();
+        renderTasks();
+        showNotification('Task completed!', 'success');
+        addActivity('task', `Completed task: ${task.name || task.title}`);
+    }
+};
+
+// Render dashboard workings
+function renderDashboardWorkings() {
+    const container = document.getElementById('activeWorkingsList');
+    if (!container) return;
+    
+    const activeWorkings = AppState.workings.filter(w => w.status === 'active').slice(0, 4);
+    
+    if (activeWorkings.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-mini">
+                <i data-lucide="sparkles"></i>
+                <p>No active workings</p>
+                <button class="btn-mini" onclick="navigateTo('magick')">
+                    <i data-lucide="plus"></i> Start Working
+                </button>
+            </div>
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+    
+    container.innerHTML = activeWorkings.map(working => {
+        const progress = calculateWorkingProgress(working);
+        return `
+            <div class="working-item" onclick="navigateTo('magick')">
+                <span class="working-intent-icon">${working.icon || '🔮'}</span>
+                <div class="working-details">
+                    <span class="working-name">${working.name}</span>
+                    <div class="working-progress-mini">
+                        <div class="progress-bar-mini">
+                            <div class="progress-fill-mini" style="width: ${progress}%"></div>
+                        </div>
+                        <span class="progress-text-mini">${progress}%</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Calculate working progress
+function calculateWorkingProgress(working) {
+    if (!working.duration || working.duration === 'ongoing') return 0;
+    const started = new Date(working.startDate);
+    const now = new Date();
+    const durationDays = parseInt(working.duration) || 30;
+    const elapsed = Math.floor((now - started) / (1000 * 60 * 60 * 24));
+    return Math.min(Math.round((elapsed / durationDays) * 100), 100);
+}
+
+// Dashboard activity tracking
+let dashboardActivities = [];
+
+function addActivity(type, text) {
+    dashboardActivities.unshift({
+        type,
+        text,
+        time: new Date().toISOString()
+    });
+    dashboardActivities = dashboardActivities.slice(0, 20); // Keep last 20
+    renderDashboardActivity();
+}
+
+function renderDashboardActivity() {
+    const container = document.getElementById('dashboardActivity');
+    if (!container) return;
+    
+    // Load from history and recent actions
+    const recentActivities = dashboardActivities.slice(0, 8);
+    
+    if (recentActivities.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state-mini">
+                <i data-lucide="clock"></i>
+                <p>No recent activity</p>
+            </div>
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+    
+    const iconMap = {
+        flow: 'sparkles',
+        working: 'wand-2',
+        task: 'check-circle',
+        mastery: 'trophy'
+    };
+    
+    container.innerHTML = recentActivities.map(activity => {
+        const timeAgo = getTimeAgo(new Date(activity.time));
+        return `
+            <div class="activity-item">
+                <div class="activity-icon ${activity.type}">
+                    <i data-lucide="${iconMap[activity.type] || 'activity'}"></i>
+                </div>
+                <div class="activity-content">
+                    <span class="activity-text">${activity.text}</span>
+                    <span class="activity-time">${timeAgo}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function getTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+}
+
+// Focus timer functionality
+let dashboardFocusMinutes = 15;
+let dashboardFocusInterval = null;
+let dashboardFocusRemaining = 0;
+
+function setupFocusPresets() {
+    document.querySelectorAll('.focus-preset').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.focus-preset').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            dashboardFocusMinutes = parseInt(btn.dataset.minutes);
+            const minutesEl = document.getElementById('focusMinutes');
+            if (minutesEl) minutesEl.textContent = dashboardFocusMinutes;
+        });
+    });
+}
+
+window.startDashboardFocus = function() {
+    const btn = document.getElementById('startFocusBtn');
+    
+    if (dashboardFocusInterval) {
+        // Stop the timer
+        clearInterval(dashboardFocusInterval);
+        dashboardFocusInterval = null;
+        btn.innerHTML = '<i data-lucide="play"></i><span>Start Focus</span>';
+        document.getElementById('focusMinutes').textContent = dashboardFocusMinutes;
+        document.getElementById('focusRingProgress').style.strokeDashoffset = 339;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+    
+    // Start the timer
+    dashboardFocusRemaining = dashboardFocusMinutes * 60;
+    const totalSeconds = dashboardFocusRemaining;
+    btn.innerHTML = '<i data-lucide="pause"></i><span>Pause</span>';
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    dashboardFocusInterval = setInterval(() => {
+        dashboardFocusRemaining--;
+        const minutes = Math.floor(dashboardFocusRemaining / 60);
+        const seconds = dashboardFocusRemaining % 60;
+        document.getElementById('focusMinutes').textContent = 
+            `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        // Update ring progress
+        const progress = 1 - (dashboardFocusRemaining / totalSeconds);
+        document.getElementById('focusRingProgress').style.strokeDashoffset = 339 * (1 - progress);
+        
+        if (dashboardFocusRemaining <= 0) {
+            clearInterval(dashboardFocusInterval);
+            dashboardFocusInterval = null;
+            btn.innerHTML = '<i data-lucide="play"></i><span>Start Focus</span>';
+            document.getElementById('focusMinutes').textContent = dashboardFocusMinutes;
+            document.getElementById('focusRingProgress').style.strokeDashoffset = 0;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            
+            // Play completion sound/notification
+            addActivity('flow', `Completed ${dashboardFocusMinutes} minute focus session`);
+            if (Notification.permission === 'granted') {
+                new Notification('Focus Complete!', { body: `Great job! You completed a ${dashboardFocusMinutes} minute focus session.` });
+            }
+        }
+    }, 1000);
+};
+
+// Cosmic insights
+const cosmicInsights = [
+    "The Moon waxes in a favorable sign. A good time for new beginnings and setting intentions.",
+    "Mercury's influence today favors clear communication and deep study.",
+    "Venus blesses your creative endeavors. Let beauty guide your practice.",
+    "Mars energizes your will. Channel this power into focused action.",
+    "Jupiter expands your horizons. Think big and trust your path.",
+    "Saturn reminds us that discipline is freedom. Structure serves your goals.",
+    "The cosmos align to support transformation. Embrace change as growth.",
+    "Today's planetary dance favors inner reflection and spiritual work.",
+    "The astral tides flow toward manifestation. Focus on what you wish to create.",
+    "Ancient wisdom speaks through the stars. Listen to your intuition today."
+];
+
+window.refreshCosmicInsight = function() {
+    const insightEl = document.getElementById('cosmicInsight');
+    if (insightEl) {
+        insightEl.textContent = cosmicInsights[Math.floor(Math.random() * cosmicInsights.length)];
+    }
+    const refreshBtn = document.querySelector('.insight-refresh');
+    if (refreshBtn) {
+        refreshBtn.style.transform = 'rotate(360deg)';
+        setTimeout(() => refreshBtn.style.transform = '', 300);
+    }
+};
 
 // --- ASTRO WIDGETS ---
 // Zodiac sign symbols for display
@@ -836,46 +1279,51 @@ function renderTodaySchedule() {
 
     if (total === 0) {
         list.innerHTML = `
-            <div class="empty-state">
-                <span class="empty-icon">☽</span>
+            <div class="empty-state-mini">
+                <i data-lucide="sunrise"></i>
                 <p>No flows scheduled for today</p>
-                <button class="btn btn-outline" onclick="navigateTo('flows')">Create a Flow</button>
+                <button class="btn-mini" onclick="navigateTo('flows')">
+                    <i data-lucide="plus"></i> Create Flow
+                </button>
             </div>`;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
     }
 
     list.innerHTML = '';
 
-    // Render Recurring with drag-drop
+    // Render Recurring with new design
     recurring.forEach((flow, displayIndex) => {
-        // Find original index in AppState.flows for the click handler
         const originalIndex = AppState.flows.findIndex(f => f.id === flow.id);
         const today = new Date().toISOString().split('T')[0];
         const isCompletedToday = flow.completedDates && flow.completedDates.includes(today);
 
         const item = document.createElement('div');
-        item.className = 'component-item';
-        item.style.cursor = 'pointer';
-        item.style.opacity = isCompletedToday ? '0.6' : '1';
+        item.className = 'schedule-item' + (isCompletedToday ? ' completed' : '');
         item.draggable = true;
         item.dataset.flowId = flow.id;
-        item.onclick = () => openFlowPreview(originalIndex);
+        
+        // Generate a random time for display (you could make this configurable)
+        const hours = 9 + displayIndex;
+        const period = hours >= 12 ? 'PM' : 'AM';
+        const displayHour = hours > 12 ? hours - 12 : hours;
+        
         item.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px; flex:1;">
-                <span class="drag-handle-inline" style="cursor:grab; color:var(--text-muted);">⋮⋮</span>
-                <button class="flow-check-inline ${isCompletedToday ? 'checked' : ''}" 
-                        onclick="event.stopPropagation(); toggleFlowDone(${flow.id}, event)"
-                        title="${isCompletedToday ? 'Mark incomplete' : 'Mark complete'}">
-                    ${isCompletedToday ? '✓' : ''}
-                </button>
-                <span style="font-size:1.2rem;">🌊</span>
-                <div>
-                    <div style="font-weight:bold; ${isCompletedToday ? 'text-decoration:line-through;' : ''}">${flow.title}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">Scheduled ${isCompletedToday ? '• Completed' : ''}</div>
-                </div>
+            <div class="schedule-time">
+                <span class="schedule-hour">${displayHour}:00</span>
+                <span class="schedule-period">${period}</span>
             </div>
-            <button class="btn-sm btn-gold" onclick="event.stopPropagation(); openFlowPreview(${originalIndex})">Start</button>
+            <div class="schedule-divider"></div>
+            <div class="schedule-info">
+                <span class="schedule-title" style="${isCompletedToday ? 'text-decoration: line-through; opacity: 0.6;' : ''}">${flow.title}</span>
+                <span class="schedule-meta">${flow.components ? flow.components.length + ' components' : 'Flow'} ${isCompletedToday ? '• Completed' : ''}</span>
+            </div>
+            <button class="schedule-action" onclick="event.stopPropagation(); openFlowPreview(${originalIndex})" title="${isCompletedToday ? 'View' : 'Start'}">
+                <i data-lucide="${isCompletedToday ? 'check' : 'play'}"></i>
+            </button>
         `;
+        
+        item.addEventListener('click', () => openFlowPreview(originalIndex));
 
         // Drag events for dashboard reordering
         item.addEventListener('dragstart', (e) => {
@@ -908,21 +1356,27 @@ function renderTodaySchedule() {
         list.appendChild(item);
     });
 
-    // Render One-Offs
+    // Render One-Offs with new design
     oneOffs.forEach(item => {
         const el = document.createElement('div');
-        el.className = 'component-item';
+        el.className = 'schedule-item';
         el.innerHTML = `
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:1.2rem;">📅</span>
-                <div>
-                    <div style="font-weight:bold;">${item.title}</div>
-                    <div style="font-size:0.8rem; color:var(--text-muted);">${item.time}</div>
-                </div>
+            <div class="schedule-time">
+                <span class="schedule-hour">${item.time || '--'}</span>
             </div>
+            <div class="schedule-divider"></div>
+            <div class="schedule-info">
+                <span class="schedule-title">${item.title}</span>
+                <span class="schedule-meta">Scheduled event</span>
+            </div>
+            <button class="schedule-action" title="View">
+                <i data-lucide="calendar"></i>
+            </button>
         `;
         list.appendChild(el);
     });
+    
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
 function updateStatsDisplay() {
@@ -935,6 +1389,13 @@ function updateStatsDisplay() {
 
     const activeWorkingsEl = document.getElementById('activeWorkings');
     if (activeWorkingsEl) activeWorkingsEl.textContent = AppState.workings.filter(w => w.status === 'active').length;
+    
+    // Update today's pomodoros for dashboard
+    const todayPomsEl = document.getElementById('todayPomodoros');
+    if (todayPomsEl) todayPomsEl.textContent = AppState.pomodorosToday || 0;
+    
+    // Update dashboard progress rings
+    updateDashboardProgressRings();
 
     // Pomodoro stats
     const pomodoroCountEl = document.getElementById('pomodoroCount');
@@ -2042,6 +2503,7 @@ window.handleWorkingImageUpload = (input) => {
             document.getElementById('workingImage').value = currentWorkingImage;
             document.getElementById('workingImagePreviewImg').src = currentWorkingImage;
             document.getElementById('workingImagePreview').style.display = 'flex';
+            document.getElementById('uploadPlaceholder').style.display = 'none';
         };
         reader.readAsDataURL(input.files[0]);
     }
@@ -2052,6 +2514,7 @@ window.clearWorkingImage = () => {
     document.getElementById('workingImage').value = '';
     document.getElementById('workingImageFile').value = '';
     document.getElementById('workingImagePreview').style.display = 'none';
+    document.getElementById('uploadPlaceholder').style.display = 'flex';
 };
 
 window.openWorkingBuilder = () => {
@@ -2064,12 +2527,40 @@ window.openWorkingBuilder = () => {
     document.getElementById('workingImage').value = '';
     document.getElementById('workingImageFile').value = '';
     document.getElementById('workingImagePreview').style.display = 'none';
+    document.getElementById('uploadPlaceholder').style.display = 'flex';
     document.getElementById('workingModalTitle').textContent = 'Create Magick Working';
-    document.getElementById('workingSaveBtn').textContent = 'Begin Working';
+    document.getElementById('workingSaveBtn').innerHTML = '<span class="save-icon">✧</span> Begin Working';
+    
+    // Reset duration presets
+    document.querySelectorAll('.duration-preset').forEach(p => p.classList.remove('active'));
+    document.querySelector('.duration-preset[data-days="40"]')?.classList.add('active');
+    
     currentWorkingImage = null;
     window.currentEditingWorkingId = null;
     window.openModal('workingBuilderModal');
+    
+    // Focus on name input
+    setTimeout(() => document.getElementById('workingName').focus(), 100);
 };
+
+// Duration preset click handlers
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.duration-preset').forEach(preset => {
+        preset.addEventListener('click', () => {
+            document.querySelectorAll('.duration-preset').forEach(p => p.classList.remove('active'));
+            preset.classList.add('active');
+            document.getElementById('workingDuration').value = preset.dataset.days;
+        });
+    });
+    
+    // Custom duration input sync
+    const durationInput = document.getElementById('workingDuration');
+    if (durationInput) {
+        durationInput.addEventListener('input', () => {
+            document.querySelectorAll('.duration-preset').forEach(p => p.classList.remove('active'));
+        });
+    }
+});
 
 window.saveWorking = () => {
     const name = document.getElementById('workingName').value;
@@ -2102,11 +2593,12 @@ window.saveWorking = () => {
             status: 'active',
             daysCompleted: 0,
             image: imageData,
-            completedDays: [], // Track which days were completed
-            sessionNotes: [] // Track notes for each session
+            completedDays: [],
+            sessionNotes: []
         };
         AppState.workings.push(working);
         addXP(50);
+        logActivity('working', `Started Working: ${name}`, 50);
     }
 
     saveState();
@@ -2118,15 +2610,17 @@ function initWorkings(filterStatus = 'active') {
     const grid = document.getElementById('workingsGrid');
     const list = document.getElementById('activeWorkingsList');
 
+    // Update stats
+    updateWorkingsStats();
+
     // Setup Tabs
-    const tabs = document.querySelectorAll('.workings-tabs .tab-btn');
+    const tabs = document.querySelectorAll('.workings-tabs-new .working-tab');
     tabs.forEach(tab => {
         tab.onclick = () => {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
             initWorkings(tab.dataset.tab);
         };
-        // Ensure UI matches current filter
         if (tab.dataset.tab === filterStatus) {
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
@@ -2138,64 +2632,30 @@ function initWorkings(filterStatus = 'active') {
 
     const filteredWorkings = AppState.workings.filter(w => w.status === filterStatus);
 
+    // Handle empty state
+    const noWorkingsEl = document.getElementById('noWorkings');
     if (filteredWorkings.length === 0) {
-        if (document.getElementById('noWorkings') && filterStatus === 'active') {
-            document.getElementById('noWorkings').style.display = 'flex';
-        } else if (grid) {
-            grid.innerHTML = `<div class="text-muted" style="width:100%; text-align:center; padding:20px;">No ${filterStatus} workings found.</div>`;
-            if (document.getElementById('noWorkings')) document.getElementById('noWorkings').style.display = 'none';
+        if (noWorkingsEl) {
+            noWorkingsEl.style.display = 'flex';
+            const statusText = filterStatus === 'active' ? 'Active' : filterStatus === 'planned' ? 'Planned' : 'Completed';
+            noWorkingsEl.querySelector('h3').textContent = `No ${statusText} Workings`;
         }
     } else {
-        if (document.getElementById('noWorkings')) document.getElementById('noWorkings').style.display = 'none';
+        if (noWorkingsEl) noWorkingsEl.style.display = 'none';
     }
 
-    // Main Grid
+    // Render working cards
     filteredWorkings.forEach(w => {
         if (grid) {
-            // Generate progress circles
-            let circles = '';
-            for (let i = 0; i < w.duration; i++) {
-                const filled = i < w.daysCompleted;
-                circles += `<div class="progress-circle ${filled ? 'filled' : ''}" title="Day ${i + 1}"></div>`;
-            }
-
-            const startDate = w.startDate ? new Date(w.startDate).toLocaleDateString() : 'N/A';
-
-            const card = document.createElement('div');
-            card.className = 'flow-card';
-            card.innerHTML = `
-                <div class="flow-content">
-                    <h3 class="flow-title">${w.name}</h3>
-                    <div class="flow-meta">
-                        <span>Day ${w.daysCompleted}/${w.duration}</span>
-                        <span>Started: ${startDate}</span>
-                        <span>${w.status}</span>
-                    </div>
-                    ${w.intention ? `<div style="margin-top:10px; padding:10px; background:rgba(212,175,55,0.1); border-left:3px solid var(--gold-primary); border-radius:4px;">
-                        <div style="font-size:0.75rem; color:var(--gold-primary); font-weight:600; margin-bottom:5px;">INTENTION</div>
-                        <div style="font-size:0.9rem; color:var(--text-main);">${w.intention}</div>
-                    </div>` : ''}
-                    ${w.affirmation ? `<div style="margin-top:10px; padding:10px; background:rgba(212,175,55,0.1); border-left:3px solid var(--gold-primary); border-radius:4px;">
-                        <div style="font-size:0.75rem; color:var(--gold-primary); font-weight:600; margin-bottom:5px;">AFFIRMATION</div>
-                        <div style="font-size:0.9rem; color:var(--text-main); font-style:italic;">${w.affirmation}</div>
-                    </div>` : ''}
-                    <div class="progress-circles-container" style="margin-top:15px; display:flex; flex-wrap:wrap; gap:5px; max-height:100px; overflow-y:auto;">
-                        ${circles}
-                    </div>
-                    <div style="margin-top:15px; display:flex; gap:10px; flex-wrap:wrap;">
-                        ${w.status === 'active' ? `
-                            <button class="btn-sm btn-gold" onclick="doWorkingDaily(${w.id})">+1 Day</button>
-                            ${w.daysCompleted > 0 ? `<button class="btn-sm btn-outline" onclick="decrementWorkingDay(${w.id})">-1 Day</button>` : ''}
-                        ` : ''}
-                        <button class="btn-sm btn-outline" onclick="editWorking(${w.id})">Edit</button>
-                        <button class="btn-sm btn-outline" onclick="toggleWorkingStatus(${w.id})">${w.status === 'active' ? 'Plan' : (w.status === 'planned' || w.status === 'paused' ? 'Activate' : 'Reopen')}</button>
-                        <button class="btn-sm btn-danger" onclick="deleteWorking(${w.id})">Delete</button>
-                    </div>
-                </div>
-            `;
+            const card = createWorkingCard(w);
             grid.appendChild(card);
         }
     });
+    
+    // Re-initialize Lucide icons for dynamic content
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 
     // Dashboard List (Always Active only)
     if (list) {
@@ -2214,14 +2674,170 @@ function initWorkings(filterStatus = 'active') {
                     <button class="btn-sm btn-gold" onclick="navigateTo('magick')">View</button>
                 </div>
                 <div style="display:flex; gap:15px; font-size:0.85rem; color:var(--text-muted);">
-                    <span>📅 Started: ${startDate}</span>
-                    <span>⏳ ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left</span>
-                    <span>📍 Day ${w.daysCompleted}/${w.duration}</span>
+                    <span><i data-lucide="calendar" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:3px;"></i> Started: ${startDate}</span>
+                    <span><i data-lucide="hourglass" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:3px;"></i> ${daysLeft} day${daysLeft !== 1 ? 's' : ''} left</span>
+                    <span><i data-lucide="map-pin" style="width:14px;height:14px;display:inline;vertical-align:middle;margin-right:3px;"></i> Day ${w.daysCompleted}/${w.duration}</span>
                 </div>
             `;
             list.appendChild(item);
         });
     }
+}
+
+function createWorkingCard(w) {
+    const card = document.createElement('div');
+    card.className = `working-card ${w.status === 'completed' ? 'completed-card' : ''}`;
+    
+    const progress = Math.round((w.daysCompleted / w.duration) * 100);
+    const startDate = w.startDate ? new Date(w.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'N/A';
+    const daysLeft = w.duration - w.daysCompleted;
+    
+    // Generate progress circles (max 40 visible, rest collapsed)
+    let circlesHtml = '';
+    const maxVisibleCircles = Math.min(w.duration, 40);
+    for (let i = 0; i < maxVisibleCircles; i++) {
+        const filled = i < w.daysCompleted;
+        const isToday = i === w.daysCompleted && w.status === 'active';
+        circlesHtml += `<div class="working-circle ${filled ? 'filled' : ''} ${isToday ? 'today' : ''}" title="Day ${i + 1}"></div>`;
+    }
+    if (w.duration > 40) {
+        circlesHtml += `<span style="font-size:0.7rem; color:var(--text-muted); margin-left:5px;">+${w.duration - 40} more</span>`;
+    }
+    
+    // Build image section if exists
+    let imageHtml = '';
+    if (w.image) {
+        imageHtml = `<div class="working-card-image" style="background-image: url('${w.image}')"></div>`;
+    }
+    
+    // Build intention/affirmation sections
+    let intentionHtml = '';
+    if (w.intention) {
+        intentionHtml = `
+            <div class="working-intention">
+                <div class="working-intention-label">Intention</div>
+                <div class="working-intention-text">${w.intention}</div>
+            </div>
+        `;
+    }
+    
+    let affirmationHtml = '';
+    if (w.affirmation) {
+        affirmationHtml = `
+            <div class="working-affirmation">
+                <div class="working-affirmation-label">Affirmation</div>
+                <div class="working-affirmation-text">"${w.affirmation}"</div>
+            </div>
+        `;
+    }
+    
+    // Action buttons based on status
+    let actionsHtml = '';
+    if (w.status === 'active') {
+        actionsHtml = `
+            <button class="working-action-btn primary" onclick="doWorkingDaily(${w.id})">
+                <i data-lucide="sparkle"></i> Complete Day
+            </button>
+            ${w.daysCompleted > 0 ? `<button class="working-action-btn" onclick="decrementWorkingDay(${w.id})"><i data-lucide="minus"></i></button>` : ''}
+            <button class="working-action-btn" onclick="editWorking(${w.id})"><i data-lucide="pencil"></i></button>
+            <button class="working-action-btn" onclick="toggleWorkingStatus(${w.id})"><i data-lucide="pause"></i></button>
+            <button class="working-action-btn danger" onclick="deleteWorking(${w.id})"><i data-lucide="trash-2"></i></button>
+        `;
+    } else if (w.status === 'planned') {
+        actionsHtml = `
+            <button class="working-action-btn primary" onclick="toggleWorkingStatus(${w.id})">
+                <i data-lucide="play"></i> Activate
+            </button>
+            <button class="working-action-btn" onclick="editWorking(${w.id})"><i data-lucide="pencil"></i></button>
+            <button class="working-action-btn danger" onclick="deleteWorking(${w.id})"><i data-lucide="trash-2"></i></button>
+        `;
+    } else {
+        actionsHtml = `
+            <button class="working-action-btn" onclick="toggleWorkingStatus(${w.id})">
+                <i data-lucide="refresh-cw"></i> Restart
+            </button>
+            <button class="working-action-btn danger" onclick="deleteWorking(${w.id})"><i data-lucide="trash-2"></i></button>
+        `;
+    }
+    
+    card.innerHTML = `
+        ${imageHtml}
+        <div class="working-card-header">
+            <h3 class="working-card-title">${w.name}</h3>
+        </div>
+        <div class="working-card-body">
+            <div class="working-progress-section">
+                <div class="working-progress-header">
+                    <span class="working-day-label">Day <strong>${w.daysCompleted}</strong> of ${w.duration}</span>
+                    <span class="working-percentage">${progress}%</span>
+                </div>
+                <div class="working-progress-bar">
+                    <div class="working-progress-fill" style="width: ${progress}%"></div>
+                </div>
+                <div class="working-circles-container">
+                    ${circlesHtml}
+                </div>
+            </div>
+            ${intentionHtml}
+            ${affirmationHtml}
+            <div class="working-card-meta">
+                <span class="working-meta-item"><i data-lucide="calendar"></i> ${startDate}</span>
+                ${w.status === 'active' ? `<span class="working-meta-item"><i data-lucide="hourglass"></i> ${daysLeft} days left</span>` : ''}
+            </div>
+        </div>
+        <div class="working-card-footer">
+            ${actionsHtml}
+        </div>
+    `;
+    
+    return card;
+}
+
+function updateWorkingsStats() {
+    const activeCount = AppState.workings.filter(w => w.status === 'active').length;
+    const plannedCount = AppState.workings.filter(w => w.status === 'planned').length;
+    const completedCount = AppState.workings.filter(w => w.status === 'completed').length;
+    
+    // Calculate streak (consecutive days with at least one working completed)
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let d = 0; d < 365; d++) {
+        const checkDate = new Date(today);
+        checkDate.setDate(checkDate.getDate() - d);
+        const dateStr = checkDate.toISOString().split('T')[0];
+        
+        const hasCompletion = AppState.workings.some(w => 
+            w.completedDays && w.completedDays.includes(dateStr)
+        );
+        
+        if (hasCompletion) {
+            streak++;
+        } else if (d > 0) {
+            break;
+        }
+    }
+    
+    // Update UI
+    const activeEl = document.getElementById('workingsActiveCount');
+    const plannedEl = document.getElementById('workingsPlannedCount');
+    const completedEl = document.getElementById('workingsCompletedCount');
+    const streakEl = document.getElementById('workingsStreak');
+    
+    if (activeEl) activeEl.textContent = activeCount;
+    if (plannedEl) plannedEl.textContent = plannedCount;
+    if (completedEl) completedEl.textContent = completedCount;
+    if (streakEl) streakEl.textContent = streak;
+    
+    // Update tab counts
+    const tabActiveCount = document.getElementById('tabActiveCount');
+    const tabPlannedCount = document.getElementById('tabPlannedCount');
+    const tabCompletedCount = document.getElementById('tabCompletedCount');
+    
+    if (tabActiveCount) tabActiveCount.textContent = activeCount;
+    if (tabPlannedCount) tabPlannedCount.textContent = plannedCount;
+    if (tabCompletedCount) tabCompletedCount.textContent = completedCount;
 }
 
 window.toggleWorkingStatus = (id) => {
@@ -2231,7 +2847,7 @@ window.toggleWorkingStatus = (id) => {
         else if (w.status === 'planned' || w.status === 'paused') w.status = 'active';
         else if (w.status === 'completed') w.status = 'active';
         saveState();
-        const activeTab = document.querySelector('.workings-tabs .tab-btn.active')?.dataset.tab || 'active';
+        const activeTab = document.querySelector('.workings-tabs-new .working-tab.active')?.dataset.tab || 'active';
         initWorkings(activeTab);
     }
 };
@@ -2240,7 +2856,7 @@ window.deleteWorking = (id) => {
     showConfirmModal('Delete Working', 'Delete this working? All progress will be lost.', () => {
         AppState.workings = AppState.workings.filter(x => x.id !== id);
         saveState();
-        const activeTab = document.querySelector('.workings-tabs .tab-btn.active')?.dataset.tab || 'active';
+        const activeTab = document.querySelector('.workings-tabs-new .working-tab.active')?.dataset.tab || 'active';
         initWorkings(activeTab);
         showNotification('Working deleted', 'normal');
     });
@@ -2251,7 +2867,7 @@ window.decrementWorkingDay = (id) => {
     if (w && w.daysCompleted > 0) {
         w.daysCompleted--;
         saveState();
-        const activeTab = document.querySelector('.workings-tabs .tab-btn.active')?.dataset.tab || 'active';
+        const activeTab = document.querySelector('.workings-tabs-new .working-tab.active')?.dataset.tab || 'active';
         initWorkings(activeTab);
         showNotification(`Day count decreased for ${w.name}`, 'gold');
     }
@@ -2267,7 +2883,15 @@ window.editWorking = (id) => {
     document.getElementById('workingDuration').value = w.duration;
     document.getElementById('workingStartDate').value = w.startDate;
     document.getElementById('workingModalTitle').textContent = 'Edit Working';
-    document.getElementById('workingSaveBtn').textContent = 'Save Changes';
+    document.getElementById('workingSaveBtn').innerHTML = '<span class="save-icon">✧</span> Save Changes';
+
+    // Reset duration presets and highlight matching one
+    document.querySelectorAll('.duration-preset').forEach(p => {
+        p.classList.remove('active');
+        if (parseInt(p.dataset.days) === w.duration) {
+            p.classList.add('active');
+        }
+    });
 
     // Handle image
     currentWorkingImage = w.image || null;
@@ -2275,11 +2899,12 @@ window.editWorking = (id) => {
     if (currentWorkingImage) {
         document.getElementById('workingImagePreviewImg').src = currentWorkingImage;
         document.getElementById('workingImagePreview').style.display = 'flex';
+        document.getElementById('uploadPlaceholder').style.display = 'none';
     } else {
         document.getElementById('workingImagePreview').style.display = 'none';
+        document.getElementById('uploadPlaceholder').style.display = 'flex';
     }
 
-    // Store editing ID for save function
     window.currentEditingWorkingId = id;
     window.openModal('workingBuilderModal');
 };
@@ -2298,19 +2923,19 @@ window.doWorkingDaily = (id) => {
         }
 
         addXP(20);
-        logActivity('working', `Working: ${w.name}`, 20);
+        logActivity('working', `Working: ${w.name} - Day ${w.daysCompleted}`, 20);
         showNotification(`Day ${w.daysCompleted} completed for ${w.name}`, 'gold');
 
         if (w.daysCompleted >= w.duration) {
             w.status = 'completed';
-            showCelebration(); // Show celebration for completing working
-            showNotification(`Working ${w.name} Fully Completed! 🎉`, 'gold');
+            showCelebration();
+            showNotification(`Working "${w.name}" Fully Completed! 🎉`, 'gold');
             addXP(500);
         }
         saveState();
         initWorkings();
 
-        // Prompt for Journal with styled modal
+        // Prompt for Journal
         setTimeout(() => {
             showConfirmModal('Add Session Note', 'Would you like to add a journal entry for this session?', () => {
                 document.getElementById('journalTitle').value = `Working: ${w.name} - Day ${w.daysCompleted}`;
@@ -2323,10 +2948,33 @@ window.doWorkingDaily = (id) => {
 
 // --- TASKS ---
 let editingTaskId = null;
+let currentTaskSubtasks = [];
+let defaultTaskStatus = 'todo';
 
 function initTasks() {
     renderTasks();
     initTaskDragDrop();
+    initTaskModalControls();
+}
+
+function initTaskModalControls() {
+    // Category chip selection
+    document.querySelectorAll('.category-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            document.getElementById('taskCategory').value = chip.dataset.value;
+        });
+    });
+
+    // Priority button selection
+    document.querySelectorAll('.priority-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('taskPriority').value = btn.dataset.value;
+        });
+    });
 }
 
 function initTaskDragDrop() {
@@ -2347,7 +2995,6 @@ function initTaskDragDrop() {
             e.preventDefault();
             column.classList.remove('drag-over');
 
-            // Try to read id from dataTransfer, fall back to the dragging element
             let taskId = parseInt(e.dataTransfer.getData('text/plain'));
             if (isNaN(taskId)) {
                 const draggingEl = document.querySelector('.task-card.dragging') || e.target.closest('.task-card');
@@ -2357,7 +3004,6 @@ function initTaskDragDrop() {
             }
 
             const newStatus = column.dataset.status;
-
             const task = AppState.tasks.find(t => t.id === taskId);
             if (task && task.status !== newStatus) {
                 const wasNotDone = task.status !== 'done';
@@ -2374,7 +3020,7 @@ function initTaskDragDrop() {
         });
     });
 
-    // Also attach handlers to the column container so empty lists accept drops
+    // Column container drop handling
     const columnContainers = document.querySelectorAll('.tasks-column');
     columnContainers.forEach(container => {
         container.addEventListener('dragover', (e) => {
@@ -2420,14 +3066,37 @@ function initTaskDragDrop() {
     });
 }
 
-window.openTaskModal = () => {
+window.openTaskModal = (status = 'todo') => {
     editingTaskId = null;
+    defaultTaskStatus = status;
+    currentTaskSubtasks = [];
+
+    // Reset form
     document.getElementById('taskName').value = '';
-    document.getElementById('taskCategory').value = 'Work';
-    document.getElementById('taskPriority').value = 'Medium';
     document.getElementById('taskDueDate').value = '';
-    document.getElementById('taskModalTitle').textContent = 'Add Task';
+    document.getElementById('taskDescription').value = '';
+
+    // Reset category chips
+    document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+    document.querySelector('.category-chip[data-value="general"]').classList.add('active');
+    document.getElementById('taskCategory').value = 'general';
+
+    // Reset priority buttons
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.priority-btn[data-value="medium"]').classList.add('active');
+    document.getElementById('taskPriority').value = 'medium';
+
+    // Reset subtasks
+    document.getElementById('subtasksList').innerHTML = '';
+    document.getElementById('subtasksCount').textContent = '(0)';
+    document.getElementById('subtasksPanel').style.display = 'none';
+    document.querySelector('.subtasks-header').classList.remove('expanded');
+
+    document.getElementById('taskModalTitle').innerHTML = '<span class="modal-title-icon">✨</span> New Task';
     window.openModal('taskModal');
+
+    // Focus on name input
+    setTimeout(() => document.getElementById('taskName').focus(), 100);
 };
 
 window.editTask = (id) => {
@@ -2435,35 +3104,68 @@ window.editTask = (id) => {
     if (!task) return;
 
     editingTaskId = id;
+    currentTaskSubtasks = task.subtasks ? [...task.subtasks] : [];
+
     document.getElementById('taskName').value = task.name;
-    document.getElementById('taskCategory').value = task.category;
-    document.getElementById('taskPriority').value = task.priority;
     document.getElementById('taskDueDate').value = task.dueDate || '';
-    document.getElementById('taskModalTitle').textContent = 'Edit Task';
+    document.getElementById('taskDescription').value = task.description || '';
+
+    // Set category chip
+    document.querySelectorAll('.category-chip').forEach(c => c.classList.remove('active'));
+    const categoryChip = document.querySelector(`.category-chip[data-value="${task.category.toLowerCase()}"]`);
+    if (categoryChip) {
+        categoryChip.classList.add('active');
+        document.getElementById('taskCategory').value = task.category.toLowerCase();
+    }
+
+    // Set priority button
+    document.querySelectorAll('.priority-btn').forEach(b => b.classList.remove('active'));
+    const priorityBtn = document.querySelector(`.priority-btn[data-value="${task.priority.toLowerCase()}"]`);
+    if (priorityBtn) {
+        priorityBtn.classList.add('active');
+        document.getElementById('taskPriority').value = task.priority.toLowerCase();
+    }
+
+    // Render subtasks
+    renderSubtasksList();
+
+    document.getElementById('taskModalTitle').innerHTML = '<span class="modal-title-icon"><i data-lucide="pencil"></i></span> Edit Task';
     window.openModal('taskModal');
 };
 
 window.saveTask = () => {
-    const name = document.getElementById('taskName').value;
-    if (!name) return;
+    const name = document.getElementById('taskName').value.trim();
+    if (!name) {
+        showNotification('Please enter a task name', 'error');
+        return;
+    }
+
+    const category = document.getElementById('taskCategory').value;
+    const priority = document.getElementById('taskPriority').value;
+    const dueDate = document.getElementById('taskDueDate').value || null;
+    const description = document.getElementById('taskDescription').value.trim() || null;
 
     if (editingTaskId) {
         const task = AppState.tasks.find(t => t.id === editingTaskId);
         if (task) {
             task.name = name;
-            task.category = document.getElementById('taskCategory').value;
-            task.priority = document.getElementById('taskPriority').value;
-            task.dueDate = document.getElementById('taskDueDate').value || null;
+            task.category = category;
+            task.priority = priority;
+            task.dueDate = dueDate;
+            task.description = description;
+            task.subtasks = currentTaskSubtasks;
             showNotification('Task updated', 'gold');
         }
     } else {
         const task = {
             id: Date.now(),
             name,
-            category: document.getElementById('taskCategory').value,
-            priority: document.getElementById('taskPriority').value,
-            dueDate: document.getElementById('taskDueDate').value || null,
-            status: 'todo',
+            category,
+            priority,
+            dueDate,
+            description,
+            subtasks: currentTaskSubtasks,
+            status: defaultTaskStatus,
             created: new Date().toISOString()
         };
         AppState.tasks.push(task);
@@ -2473,8 +3175,91 @@ window.saveTask = () => {
     saveState();
     renderTasks();
     window.closeModal('taskModal');
-    document.getElementById('taskName').value = '';
     editingTaskId = null;
+    currentTaskSubtasks = [];
+};
+
+window.clearTaskDueDate = () => {
+    document.getElementById('taskDueDate').value = '';
+};
+
+window.toggleSubtasksPanel = () => {
+    const panel = document.getElementById('subtasksPanel');
+    const header = document.querySelector('.subtasks-header');
+    const isExpanded = panel.style.display !== 'none';
+
+    panel.style.display = isExpanded ? 'none' : 'block';
+    header.classList.toggle('expanded', !isExpanded);
+};
+
+window.addSubtask = () => {
+    const input = document.getElementById('newSubtaskInput');
+    const text = input.value.trim();
+    if (!text) return;
+
+    currentTaskSubtasks.push({
+        id: Date.now(),
+        text,
+        completed: false
+    });
+
+    input.value = '';
+    renderSubtasksList();
+};
+
+window.handleSubtaskKeypress = (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addSubtask();
+    }
+};
+
+window.toggleSubtask = (subtaskId) => {
+    const subtask = currentTaskSubtasks.find(s => s.id === subtaskId);
+    if (subtask) {
+        subtask.completed = !subtask.completed;
+        renderSubtasksList();
+    }
+};
+
+window.deleteSubtask = (subtaskId) => {
+    currentTaskSubtasks = currentTaskSubtasks.filter(s => s.id !== subtaskId);
+    renderSubtasksList();
+};
+
+function renderSubtasksList() {
+    const list = document.getElementById('subtasksList');
+    const countEl = document.getElementById('subtasksCount');
+
+    const completedCount = currentTaskSubtasks.filter(s => s.completed).length;
+    countEl.textContent = `(${completedCount}/${currentTaskSubtasks.length})`;
+
+    list.innerHTML = currentTaskSubtasks.map(sub => `
+        <div class="subtask-item ${sub.completed ? 'completed' : ''}">
+            <div class="subtask-check ${sub.completed ? 'checked' : ''}" onclick="toggleSubtask(${sub.id})"></div>
+            <span class="subtask-text">${sub.text}</span>
+            <button class="subtask-delete" onclick="deleteSubtask(${sub.id})">×</button>
+        </div>
+    `).join('');
+}
+
+window.clearTaskFilters = () => {
+    document.getElementById('taskSearch').value = '';
+    document.getElementById('taskCategoryFilter').value = '';
+    document.getElementById('taskPriorityFilter').value = '';
+    renderTasks();
+};
+
+window.clearDoneTasks = () => {
+    const doneCount = AppState.tasks.filter(t => t.status === 'done').length;
+    if (doneCount === 0) return;
+
+    if (confirm(`Clear ${doneCount} completed task${doneCount > 1 ? 's' : ''}?`)) {
+        AppState.tasks = AppState.tasks.filter(t => t.status !== 'done');
+        saveState();
+        renderTasks();
+        showNotification('Completed tasks cleared', 'gold');
+    }
 };
 
 function renderTasks() {
@@ -2486,14 +3271,14 @@ function renderTasks() {
 
     // Get filter values
     const searchQuery = document.getElementById('taskSearch')?.value.toLowerCase() || '';
-    const categoryFilter = document.getElementById('taskCategoryFilter')?.value || '';
-    const priorityFilter = document.getElementById('taskPriorityFilter')?.value || '';
+    const categoryFilter = document.getElementById('taskCategoryFilter')?.value.toLowerCase() || '';
+    const priorityFilter = document.getElementById('taskPriorityFilter')?.value.toLowerCase() || '';
 
     // Filter tasks
     const filteredTasks = AppState.tasks.filter(task => {
         if (searchQuery && !task.name.toLowerCase().includes(searchQuery)) return false;
-        if (categoryFilter && task.category.toLowerCase() !== categoryFilter.toLowerCase()) return false;
-        if (priorityFilter && task.priority.toLowerCase() !== priorityFilter.toLowerCase()) return false;
+        if (categoryFilter && task.category.toLowerCase() !== categoryFilter) return false;
+        if (priorityFilter && task.priority.toLowerCase() !== priorityFilter) return false;
         return true;
     });
 
@@ -2504,11 +3289,22 @@ function renderTasks() {
     let counts = { todo: 0, progress: 0, done: 0 };
     const today = new Date().toISOString().split('T')[0];
 
+    // Category icons - using Lucide icon names
+    const categoryIcons = {
+        general: 'pin',
+        work: 'briefcase',
+        personal: 'user',
+        health: 'heart-pulse',
+        study: 'book-open',
+        spiritual: 'sparkles',
+        fitness: 'activity'
+    };
+
     // Priority colors
     const priorityColors = {
         high: '#ff6b6b',
-        medium: 'var(--gold-primary)',
-        low: '#6bff8e'
+        medium: '#d4af37',
+        low: '#4ade80'
     };
 
     filteredTasks.forEach(task => {
@@ -2520,47 +3316,65 @@ function renderTasks() {
 
         const isDone = task.status === 'done';
         const isOverdue = task.dueDate && task.dueDate < today && !isDone;
+        const priorityColor = priorityColors[task.priority.toLowerCase()] || '#d4af37';
 
-        if (isOverdue) {
-            el.classList.add('task-overdue');
-        }
+        el.style.setProperty('--task-priority-color', priorityColor);
+
+        if (isOverdue) el.classList.add('task-overdue');
+        if (isDone) el.classList.add('completed');
 
         // Setup drag events
         el.addEventListener('dragstart', (e) => {
-            // store the task id as a string and allow move
             try { e.dataTransfer.setData('text/plain', String(task.id)); } catch (err) { }
             try { e.dataTransfer.effectAllowed = 'move'; } catch (err) { }
             el.classList.add('dragging');
-            document.body.classList.add('no-scroll');
         });
 
         el.addEventListener('dragend', () => {
             el.classList.remove('dragging');
-            document.body.classList.remove('no-scroll');
         });
 
-        // Format due date display
+        // Format due date
         let dueDateHtml = '';
         if (task.dueDate) {
             const dueDate = new Date(task.dueDate);
             const dateStr = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            const overdueClass = isOverdue ? 'task-badge-overdue' : '';
-            dueDateHtml = `<span class="task-badge ${overdueClass}">📅 ${dateStr}</span>`;
+            dueDateHtml = `<span class="task-tag due-tag ${isOverdue ? 'overdue' : ''}"><i data-lucide="calendar"></i> ${dateStr}</span>`;
         }
 
-        el.innerHTML = `
-            <div class="task-check ${isDone ? 'checked' : ''}" onclick="toggleTaskDone(${task.id})"></div>
-            <div class="task-content">
-                <div class="task-title" style="${isDone ? 'text-decoration:line-through; opacity:0.5;' : ''}">${task.name}</div>
-                <div class="task-meta">
-                    <span class="task-badge">${task.category}</span>
-                    <span class="task-badge" style="color:${priorityColors[task.priority.toLowerCase()] || 'var(--gold-primary)'}">${task.priority}</span>
-                    ${dueDateHtml}
+        // Subtasks progress
+        let subtasksHtml = '';
+        if (task.subtasks && task.subtasks.length > 0) {
+            const completedSubs = task.subtasks.filter(s => s.completed).length;
+            const progress = (completedSubs / task.subtasks.length) * 100;
+            subtasksHtml = `
+                <div class="task-subtasks-progress">
+                    <div class="subtasks-progress-bar">
+                        <div class="subtasks-progress-fill" style="width: ${progress}%"></div>
+                    </div>
+                    <span class="subtasks-progress-text">${completedSubs}/${task.subtasks.length} subtasks</span>
                 </div>
-            </div>
-            <div style="display:flex; gap:5px">
-                <button class="btn-sm btn-outline" onclick="editTask(${task.id})" title="Edit">✎</button>
-                <button class="btn-sm btn-danger" onclick="deleteTask(${task.id})" title="Delete">×</button>
+            `;
+        }
+
+        const categoryIcon = categoryIcons[task.category.toLowerCase()] || 'pin';
+
+        el.innerHTML = `
+            <div class="task-card-main">
+                <div class="task-checkbox ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); toggleTaskDone(${task.id})"></div>
+                <div class="task-card-content">
+                    <div class="task-card-title">${task.name}</div>
+                    <div class="task-card-meta">
+                        <span class="task-tag category-tag"><i data-lucide="${categoryIcon}"></i> ${task.category}</span>
+                        <span class="task-tag priority-tag priority-${task.priority.toLowerCase()}">${task.priority}</span>
+                        ${dueDateHtml}
+                    </div>
+                    ${subtasksHtml}
+                </div>
+                <div class="task-card-actions">
+                    <button class="task-action-btn" onclick="event.stopPropagation(); editTask(${task.id})" title="Edit"><i data-lucide="pencil"></i></button>
+                    <button class="task-action-btn delete-btn" onclick="event.stopPropagation(); deleteTask(${task.id})" title="Delete"><i data-lucide="trash-2"></i></button>
+                </div>
             </div>
         `;
 
@@ -2569,9 +3383,38 @@ function renderTasks() {
         if (task.status === 'done') doneList.appendChild(el);
     });
 
+    // Update counts
     document.getElementById('todoCount').textContent = counts.todo;
     document.getElementById('progressCount').textContent = counts.progress;
     document.getElementById('doneCount').textContent = counts.done;
+
+    // Update quick stats
+    const totalEl = document.getElementById('tasksQuickTotal');
+    const doneEl = document.getElementById('tasksQuickDone');
+    if (totalEl) {
+        totalEl.innerHTML = `<span class="stat-num">${AppState.tasks.length}</span> total`;
+    }
+
+    // Count done today
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const doneToday = AppState.tasks.filter(t => 
+        t.status === 'done' && t.completedAt && new Date(t.completedAt) >= todayStart
+    ).length;
+    if (doneEl) {
+        doneEl.innerHTML = `<span class="stat-num">${doneToday}</span> done today`;
+    }
+
+    // Show/hide clear done button
+    const clearDoneBtn = document.getElementById('clearDoneBtn');
+    if (clearDoneBtn) {
+        clearDoneBtn.style.display = counts.done > 0 ? 'block' : 'none';
+    }
+    
+    // Re-initialize Lucide icons for dynamic content
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
 }
 
 window.toggleTaskDone = (id) => {
@@ -2580,8 +3423,10 @@ window.toggleTaskDone = (id) => {
 
     if (task.status === 'done') {
         task.status = 'todo';
+        task.completedAt = null;
     } else {
         task.status = 'done';
+        task.completedAt = new Date().toISOString();
         addXP(15);
         logActivity('task', `Completed Task: ${task.name}`, 15);
     }
@@ -2600,6 +3445,7 @@ window.moveTask = (id, dir) => {
     if (newIdx >= 0 && newIdx < states.length) {
         task.status = states[newIdx];
         if (task.status === 'done') {
+            task.completedAt = new Date().toISOString();
             addXP(15);
             logActivity('task', `Completed Task: ${task.name}`, 15);
         }
@@ -2609,9 +3455,12 @@ window.moveTask = (id, dir) => {
 };
 
 window.deleteTask = (id) => {
-    AppState.tasks = AppState.tasks.filter(t => t.id !== id);
-    saveState();
-    renderTasks();
+    if (confirm('Delete this task?')) {
+        AppState.tasks = AppState.tasks.filter(t => t.id !== id);
+        saveState();
+        renderTasks();
+        showNotification('Task deleted', 'gold');
+    }
 };
 
 // --- POMODORO ---
@@ -2622,149 +3471,189 @@ function initPomodoro() {
             work: 25,
             short: 5,
             long: 15,
-            longBreakAfter: 4
+            longBreakAfter: 4,
+            dailyGoal: 4
         };
     }
 
-    // Bind inputs to settings and UI
-    const bindSlider = (id, key) => {
-        const input = document.getElementById(id);
-        const label = document.getElementById(id + 'Val');
-        if (!input || !label) return;
+    // Initialize pomoState if missing or fix old state
+    if (!AppState.pomoState) {
+        AppState.pomoState = {
+            mode: 'work',
+            time: AppState.settings.pomodoro.work * 60,
+            totalTime: AppState.settings.pomodoro.work * 60,
+            isRunning: false,
+            interval: null,
+            sessionCount: 0
+        };
+    } else {
+        // Ensure sessionCount exists for old saved states
+        if (typeof AppState.pomoState.sessionCount !== 'number') {
+            AppState.pomoState.sessionCount = 0;
+        }
+    }
 
-        // Set initial value from state
-        input.value = AppState.settings.pomodoro[key];
-        label.textContent = AppState.settings.pomodoro[key];
-
-        // Listen for changes
-        input.addEventListener('change', (e) => {
-            const val = parseInt(e.target.value);
-            label.textContent = val;
-            AppState.settings.pomodoro[key] = val;
-            saveState();
-
-            // If currently in this mode and not running, update timer immediately
-            const modeMap = {
-                'work': 'work',
-                'short': 'short',
-                'long': 'long'
-            };
-
-            if (!AppState.pomoState.isRunning && AppState.pomoState.mode === modeMap[key]) {
-                AppState.pomoState.time = val * 60;
-                AppState.pomoState.totalTime = AppState.pomoState.time;
-                updatePomoDisplay();
-            }
-        });
-    };
-
-    bindSlider('workDuration', 'work');
-    bindSlider('shortBreak', 'short');
-    bindSlider('longBreak', 'long');
-    bindSlider('longBreakAfter', 'longBreakAfter');
+    // Update settings displays
+    updatePomoSettingsDisplay();
 
     // Populate Mastery Link selector
-    const updateMasterySelector = () => {
-        const pomoMasterySelect = document.getElementById('pomoMasteryLink');
-        if (!pomoMasterySelect) return;
+    updatePomoMasterySelector();
 
-        const currentVal = AppState.settings.pomodoro.linkedMasteryId;
-        pomoMasterySelect.innerHTML = '<option value="">None (General Focus)</option>';
-        AppState.mastery.forEach(m => {
-            if (m.type === 'hours') {
-                const opt = document.createElement('option');
-                opt.value = m.id;
-                opt.textContent = `${m.icon || '🧘'} ${m.name}`;
-                if (currentVal == m.id) opt.selected = true;
-                pomoMasterySelect.appendChild(opt);
+    // Initialize display
+    resetPomodoro();
+    updatePomoStats();
+
+    // Mode tab handling
+    const modeTabs = document.querySelectorAll('.pomo-tab');
+    modeTabs.forEach(tab => {
+        tab.onclick = () => {
+            if (AppState.pomoState.isRunning) {
+                showNotification('Stop timer before switching modes', 'normal');
+                return;
             }
-        });
-    };
+            modeTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            AppState.pomoState.mode = tab.dataset.mode;
+            updatePomoModeColors();
+            resetPomodoro();
+        };
+    });
 
-    updateMasterySelector();
-
-    // Listen for mastery changes to refresh selector
-    const originalRenderMastery = window.renderMastery;
-    window.renderMastery = (...args) => {
-        if (originalRenderMastery) originalRenderMastery(...args);
-        updateMasterySelector();
-        updateLinkedGoalDisplay();
-    };
-
-    const pomoMasterySelect = document.getElementById('pomoMasteryLink');
+    // Mastery link selector
+    const pomoMasterySelect = document.getElementById('pomoMasterySelect');
     if (pomoMasterySelect) {
         pomoMasterySelect.onchange = (e) => {
             AppState.settings.pomodoro.linkedMasteryId = e.target.value || null;
             saveState();
-            updateLinkedGoalDisplay();
+            updatePomoLinkedDisplay();
         };
-    }
-
-    // Initialize display
-    resetPomodoro();
-    updateStatsDisplay();
-
-    // Mode handling for V2 (from side tabs or any future mode switchers)
-    const modeBtns = document.querySelectorAll('.mode-btn');
-    if (modeBtns.length > 0) {
-        modeBtns.forEach(btn => {
-            btn.onclick = () => {
-                modeBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                AppState.pomoState.mode = btn.dataset.mode;
-                resetPomodoro();
-            };
-        });
     }
 }
 
-function updateLinkedGoalDisplay() {
-    const display = document.getElementById('pomoLinkedGoalDisplay');
-    const nameEl = document.getElementById('pomoLinkedGoalName');
-    const dot = document.getElementById('pomoGoalDot');
+function updatePomoSettingsDisplay() {
+    const workEl = document.getElementById('workDurationDisplay');
+    const shortEl = document.getElementById('shortBreakDisplay');
+    const longEl = document.getElementById('longBreakDisplay');
+    
+    if (workEl) workEl.textContent = AppState.settings.pomodoro.work;
+    if (shortEl) shortEl.textContent = AppState.settings.pomodoro.short;
+    if (longEl) longEl.textContent = AppState.settings.pomodoro.long;
+}
+
+function updatePomoMasterySelector() {
+    const select = document.getElementById('pomoMasterySelect');
+    if (!select) return;
+
+    const currentVal = AppState.settings.pomodoro.linkedMasteryId;
+    select.innerHTML = '<option value="">No goal linked</option>';
+    
+    AppState.mastery.forEach(m => {
+        if (m.type === 'hours' && !m.archived) {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = `${m.icon || '🧘'} ${m.name}`;
+            if (currentVal == m.id) opt.selected = true;
+            select.appendChild(opt);
+        }
+    });
+}
+
+function updatePomoLinkedDisplay() {
+    const pill = document.getElementById('pomoLinkedPill');
+    const nameEl = document.getElementById('pomoLinkedName');
+    const dot = document.getElementById('pomoLinkedDot');
 
     const linkedId = AppState.settings.pomodoro?.linkedMasteryId;
     if (linkedId) {
         const m = AppState.mastery.find(x => x.id == linkedId);
         if (m) {
-            if (display) display.style.display = 'inline-flex';
+            if (pill) pill.style.display = 'inline-flex';
             if (nameEl) nameEl.textContent = `${m.icon || '🧘'} ${m.name}`;
-            if (dot) dot.style.setProperty('--goal-color', m.color);
+            if (dot) dot.style.setProperty('--linked-color', m.color || 'var(--gold-primary)');
             return;
         }
     }
-    if (display) display.style.display = 'none';
+    if (pill) pill.style.display = 'none';
+}
+
+window.clearPomoLink = () => {
+    AppState.settings.pomodoro.linkedMasteryId = null;
+    const select = document.getElementById('pomoMasterySelect');
+    if (select) select.value = '';
+    saveState();
+    updatePomoLinkedDisplay();
+};
+
+window.adjustPomoSetting = (key, delta) => {
+    const settings = AppState.settings.pomodoro;
+    const mins = { work: [5, 120], short: [1, 30], long: [5, 60] };
+    const [min, max] = mins[key] || [1, 120];
+    
+    settings[key] = Math.max(min, Math.min(max, settings[key] + delta));
+    saveState();
+    updatePomoSettingsDisplay();
+    
+    // If not running and in this mode, update timer
+    if (!AppState.pomoState.isRunning && AppState.pomoState.mode === key) {
+        AppState.pomoState.time = settings[key] * 60;
+        AppState.pomoState.totalTime = AppState.pomoState.time;
+        updatePomoDisplay();
+    }
+};
+
+function updatePomoModeColors() {
+    const main = document.querySelector('.pomo-main');
+    if (!main) return;
+    
+    const mode = AppState.pomoState.mode;
+    if (mode === 'short' || mode === 'long') {
+        main.classList.add('break-mode');
+    } else {
+        main.classList.remove('break-mode');
+    }
 }
 
 window.togglePomodoro = () => {
-    const btn = document.getElementById('pomoToggleBtn');
+    const playBtn = document.getElementById('pomoPlayBtn');
+    const playIcon = document.getElementById('pomoPlayIcon');
 
     if (AppState.pomoState.isRunning) {
+        // Pause
         clearInterval(AppState.pomoState.interval);
         AppState.pomoState.isRunning = false;
-        if (btn) btn.innerHTML = '<span>▶️</span>';
+        if (playIcon) playIcon.innerHTML = '<i data-lucide="play"></i>';
+        if (playBtn) playBtn.classList.remove('running');
         saveState();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } else {
+        // Start
         AppState.pomoState.isRunning = true;
-        if (btn) btn.innerHTML = '<span>⏸️</span>';
+        if (playIcon) playIcon.innerHTML = '<i data-lucide="pause"></i>';
+        if (playBtn) playBtn.classList.add('running');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        
+        updatePomoStatusText();
 
         AppState.pomoState.interval = setInterval(() => {
             AppState.pomoState.time--;
             updatePomoDisplay();
 
-            if (AppState.pomoState.time % 10 === 0) saveState(); // Save every 10s to avoid lag
+            if (AppState.pomoState.time % 10 === 0) saveState();
 
             if (AppState.pomoState.time <= 0) {
                 clearInterval(AppState.pomoState.interval);
                 AppState.pomoState.isRunning = false;
-                if (btn) btn.innerHTML = '<span>▶️</span>';
+                if (playIcon) playIcon.innerHTML = '<i data-lucide="play"></i>';
+                if (playBtn) playBtn.classList.remove('running');
+                if (typeof lucide !== 'undefined') lucide.createIcons();
 
                 playNotificationSound();
-                showNotification("Focus Session Complete!", "gold");
-
+                
                 if (AppState.pomoState.mode === 'work') {
+                    // Work session complete
                     AppState.pomodorosToday++;
                     AppState.totalPomodoros++;
+                    AppState.pomoState.sessionCount++;
                     AppState.lastPomodoroDate = new Date().toISOString().split('T')[0];
 
                     const durationMin = AppState.settings.pomodoro.work || 25;
@@ -2779,23 +3668,57 @@ window.togglePomodoro = () => {
                             const hoursGained = durationMin / 60;
                             mastery.currentHours += hoursGained;
                             mastery.lastLog = new Date().toISOString();
+                            if (!mastery.logs) mastery.logs = [];
+                            mastery.logs.push({
+                                date: new Date().toISOString(),
+                                amount: hoursGained,
+                                note: 'Pomodoro session'
+                            });
                             logActivity('pomodoro', `Session: ${mastery.name}`, xpGained);
-                            showNotification(`+${durationMin}m added to ${mastery.name}`, 'gold');
+                            showNotification(`🎉 Session complete! +${durationMin}m to ${mastery.name}`, 'gold');
                             renderMastery();
                         } else {
                             logActivity('pomodoro', 'Focus Session', xpGained);
+                            showNotification('🎉 Focus session complete! +' + xpGained + ' XP', 'gold');
                         }
                     } else {
                         logActivity('pomodoro', 'Focus Session', xpGained);
+                        showNotification('🎉 Focus session complete! +' + xpGained + ' XP', 'gold');
                     }
+
+                    // Auto switch to break
+                    const sessionCount = AppState.pomoState.sessionCount;
+                    const longBreakAfter = AppState.settings.pomodoro.longBreakAfter || 4;
+                    
+                    if (sessionCount % longBreakAfter === 0) {
+                        switchPomoMode('long');
+                    } else {
+                        switchPomoMode('short');
+                    }
+                } else {
+                    // Break complete
+                    showNotification('☕ Break over! Ready to focus?', 'normal');
+                    switchPomoMode('work');
                 }
+
                 saveState();
-                updateStatsDisplay();
-                resetPomodoro(); // Reset to next mode if logic is added later, for now just reset
+                updatePomoStats();
             }
         }, 1000);
     }
 };
+
+function switchPomoMode(mode) {
+    AppState.pomoState.mode = mode;
+    
+    const tabs = document.querySelectorAll('.pomo-tab');
+    tabs.forEach(t => {
+        t.classList.toggle('active', t.dataset.mode === mode);
+    });
+    
+    updatePomoModeColors();
+    resetPomodoro();
+}
 
 window.resetPomodoro = () => {
     clearInterval(AppState.pomoState.interval);
@@ -2806,51 +3729,122 @@ window.resetPomodoro = () => {
     AppState.pomoState.totalTime = AppState.pomoState.time;
 
     updatePomoDisplay();
-    updateLinkedGoalDisplay();
+    updatePomoLinkedDisplay();
+    updatePomoStatusText();
     saveState();
 
-    const btn = document.getElementById('pomoToggleBtn');
-    if (btn) btn.innerHTML = '<span>▶️</span>';
+    const playIcon = document.getElementById('pomoPlayIcon');
+    const playBtn = document.getElementById('pomoPlayBtn');
+    if (playIcon) playIcon.innerHTML = '<i data-lucide="play"></i>';
+    if (playBtn) playBtn.classList.remove('running');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 };
+
+window.skipPomodoro = () => {
+    if (AppState.pomoState.isRunning) {
+        showNotification('Stop timer before skipping', 'normal');
+        return;
+    }
+    
+    const mode = AppState.pomoState.mode;
+    if (mode === 'work') {
+        const longBreakAfter = AppState.settings.pomodoro.longBreakAfter || 4;
+        const sessionCount = AppState.pomoState.sessionCount;
+        if ((sessionCount + 1) % longBreakAfter === 0) {
+            switchPomoMode('long');
+        } else {
+            switchPomoMode('short');
+        }
+    } else {
+        switchPomoMode('work');
+    }
+};
+
+function updatePomoStatusText() {
+    const statusEl = document.getElementById('pomoStatus');
+    if (!statusEl) return;
+    
+    const mode = AppState.pomoState.mode;
+    const isRunning = AppState.pomoState.isRunning;
+    
+    if (!isRunning && AppState.pomoState.time === AppState.pomoState.totalTime) {
+        statusEl.textContent = mode === 'work' ? 'Ready to Focus' : 'Time for a Break';
+    } else if (isRunning) {
+        statusEl.textContent = mode === 'work' ? 'Deep Focus' : (mode === 'short' ? 'Short Break' : 'Long Break');
+    } else {
+        statusEl.textContent = 'Paused';
+    }
+}
 
 function updatePomoDisplay() {
     const m = Math.floor(AppState.pomoState.time / 60).toString().padStart(2, '0');
     const s = (AppState.pomoState.time % 60).toString().padStart(2, '0');
 
-    // Update main display
-    const el = document.getElementById('timerDisplay');
-    if (el) el.textContent = `${m}:${s}`;
+    const timeEl = document.getElementById('pomoTimeDisplay');
+    if (timeEl) timeEl.textContent = `${m}:${s}`;
 
-    // Update badge and colors
-    const badge = document.getElementById('pomoModeBadge');
-    const glow = document.getElementById('pomoGlow');
-
-    if (badge) {
-        if (!AppState.pomoState.isRunning && AppState.pomoState.time === AppState.pomoState.totalTime) {
-            badge.textContent = 'Ready to Focus';
-            badge.className = 'pomo-mode-badge';
-            if (glow) glow.style.setProperty('--pomo-glow', 'var(--gold-glow)');
-        } else {
-            const mode = AppState.pomoState.mode;
-            badge.textContent = mode === 'work' ? 'Deep Focus' : (mode === 'short' ? 'Short Rest' : 'Long Rest');
-            badge.className = 'pomo-mode-badge active-work';
-
-            if (glow) {
-                const color = mode === 'work' ? 'var(--gold-glow)' : 'var(--accent-blue)';
-                glow.style.setProperty('--pomo-glow', color);
-            }
-        }
+    // Update session label
+    const sessionLabel = document.getElementById('pomoSessionLabel');
+    if (sessionLabel) {
+        const sessionCount = AppState.pomoState.sessionCount || 0;
+        const longBreakAfter = AppState.settings.pomodoro.longBreakAfter || 4;
+        const current = (sessionCount % longBreakAfter) + 1;
+        sessionLabel.textContent = `Session ${current} of ${longBreakAfter}`;
     }
 
     // Ring progress
-    const ring = document.getElementById('pomodoroRing');
+    const ring = document.getElementById('pomoRingProgress');
     if (ring) {
         const total = AppState.pomoState.totalTime || (25 * 60);
-        const circumference = 2 * Math.PI * 110;
-        const offset = circumference - ((AppState.pomoState.time / total) * circumference);
-        ring.style.strokeDasharray = `${circumference} ${circumference}`;
+        const circumference = 2 * Math.PI * 130; // radius 130
+        const progress = AppState.pomoState.time / total;
+        const offset = circumference * (1 - progress);
+        ring.style.strokeDasharray = `${circumference}`;
         ring.style.strokeDashoffset = offset;
     }
+
+    updatePomoStatusText();
+}
+
+function updatePomoStats() {
+    // Today stats
+    const todayEl = document.getElementById('todayPomos');
+    if (todayEl) todayEl.textContent = AppState.pomodorosToday || 0;
+
+    const todayMinEl = document.getElementById('todayMinutes');
+    if (todayMinEl) {
+        const mins = (AppState.pomodorosToday || 0) * (AppState.settings.pomodoro.work || 25);
+        todayMinEl.textContent = mins;
+    }
+
+    // Today progress ring
+    const todayRing = document.getElementById('todayProgressRing');
+    if (todayRing) {
+        const goal = AppState.settings.pomodoro.dailyGoal || 4;
+        const done = AppState.pomodorosToday || 0;
+        const pct = Math.min(done / goal, 1);
+        const circumference = 2 * Math.PI * 16;
+        todayRing.style.strokeDasharray = `${circumference}`;
+        todayRing.style.strokeDashoffset = circumference * (1 - pct);
+    }
+
+    const goalTextEl = document.getElementById('todayGoalText');
+    if (goalTextEl) {
+        goalTextEl.textContent = `Goal: ${AppState.settings.pomodoro.dailyGoal || 4}`;
+    }
+
+    // Lifetime stats
+    const totalSessionsEl = document.getElementById('totalPomoSessions');
+    if (totalSessionsEl) totalSessionsEl.textContent = AppState.totalPomodoros || 0;
+
+    const totalHoursEl = document.getElementById('totalPomoHours');
+    if (totalHoursEl) {
+        const hours = ((AppState.totalPomodoros || 0) * (AppState.settings.pomodoro.work || 25) / 60).toFixed(1);
+        totalHoursEl.textContent = hours;
+    }
+
+    // Update mastery selector in case it changed
+    updatePomoMasterySelector();
 }
 
 // --- BREATHING ---
@@ -2906,7 +3900,7 @@ window.startBreathingLoop = () => {
     const startBtn = document.getElementById('breathingStartBtn');
     const stopBtn = document.getElementById('breathingStopBtn');
     if (startBtn) startBtn.style.display = 'none';
-    if (stopBtn) stopBtn.style.display = 'block';
+    if (stopBtn) stopBtn.style.display = 'flex';
     AppState.breathingActive = true;
     runBreathingLoop();
 };
@@ -2915,7 +3909,7 @@ window.stopBreathingLoop = () => {
     const startBtn = document.getElementById('breathingStartBtn');
     const stopBtn = document.getElementById('breathingStopBtn');
     const text = document.getElementById('breathingText');
-    const circle = document.querySelector('.breathing-circle');
+    const orb = document.getElementById('breathingCircle');
     const timerDisplay = document.getElementById('breathingTimer');
     const instructionDisplay = document.getElementById('breathingInstruction');
     const particlesContainer = document.getElementById('breathingParticles');
@@ -2923,20 +3917,29 @@ window.stopBreathingLoop = () => {
     AppState.breathingActive = false;
     clearTimeout(AppState.breathingInterval);
     if (AppState.breathingTimerInterval) clearInterval(AppState.breathingTimerInterval);
+    if (AppState.breathingSessionInterval) clearInterval(AppState.breathingSessionInterval);
 
     // Reset display
     if (text) text.textContent = 'Ready';
     if (timerDisplay) timerDisplay.textContent = '';
-    if (instructionDisplay) instructionDisplay.textContent = 'Select a pattern and press Start';
-    if (circle) {
-        circle.style.transform = 'scale(1)';
-        circle.style.opacity = '0.7';
-        circle.style.background = 'radial-gradient(circle, rgba(212, 175, 55, 0.3), rgba(138, 43, 226, 0.2))';
-        circle.style.boxShadow = '0 0 50px rgba(212, 175, 55, 0.6), 0 0 100px rgba(138, 43, 226, 0.4)';
+    if (instructionDisplay) {
+        const span = instructionDisplay.querySelector('span');
+        if (span) span.textContent = 'Select a pattern and press Start';
+        else instructionDisplay.textContent = 'Select a pattern and press Start';
+    }
+    if (orb) {
+        orb.classList.remove('inhale', 'hold', 'exhale');
+        orb.style.transform = '';
     }
     if (particlesContainer) particlesContainer.innerHTML = '';
+    
+    // Reset stats
+    const cycleEl = document.getElementById('breathCycleCount');
+    const sessionEl = document.getElementById('breathSessionTime');
+    if (cycleEl) cycleEl.textContent = '0';
+    if (sessionEl) sessionEl.textContent = '0:00';
 
-    if (startBtn) startBtn.style.display = 'block';
+    if (startBtn) startBtn.style.display = 'flex';
     if (stopBtn) stopBtn.style.display = 'none';
 };
 
@@ -3037,11 +4040,11 @@ function getPhaseVisuals(phaseType) {
 
 function runBreathingLoop() {
     const text = document.getElementById('breathingText');
-    const circle = document.querySelector('.breathing-circle');
+    const orb = document.getElementById('breathingCircle');
     const patternSelect = document.getElementById('breathingPattern');
     const timerDisplay = document.getElementById('breathingTimer');
     const instructionDisplay = document.getElementById('breathingInstruction');
-    if (!text || !circle) return;
+    if (!text || !orb) return;
 
     // Parse breathing pattern from CONFIG + custom patterns
     let phases = [{ type: 'inhale', duration: 4 }, { type: 'hold', duration: 4 }, { type: 'exhale', duration: 4 }, { type: 'hold', duration: 4 }]; // Default
@@ -3067,19 +4070,36 @@ function runBreathingLoop() {
     let phaseIndex = 0;
     let timeLeft = phases[0].duration;
     let timerInterval;
+    let cycleCount = 0;
+    let sessionSeconds = 0;
 
     // Store timer interval for cleanup
     AppState.breathingTimerInterval = null;
+    
+    // Session timer
+    AppState.breathingSessionInterval = setInterval(() => {
+        sessionSeconds++;
+        const mins = Math.floor(sessionSeconds / 60);
+        const secs = sessionSeconds % 60;
+        const sessionEl = document.getElementById('breathSessionTime');
+        if (sessionEl) sessionEl.textContent = `${mins}:${secs.toString().padStart(2, '0')}`;
+    }, 1000);
 
     const updateTimer = () => {
         if (timerDisplay) {
             timerDisplay.textContent = timeLeft > 0 ? timeLeft : '';
         }
     };
+    
+    const updateCycleCount = () => {
+        const cycleEl = document.getElementById('breathCycleCount');
+        if (cycleEl) cycleEl.textContent = cycleCount;
+    };
 
     const runPhase = () => {
         if (!document.getElementById('breathingOverlay').classList.contains('active') || !AppState.breathingActive) {
             if (timerInterval) clearInterval(timerInterval);
+            if (AppState.breathingSessionInterval) clearInterval(AppState.breathingSessionInterval);
             return;
         }
 
@@ -3093,15 +4113,14 @@ function runBreathingLoop() {
 
         // Set instruction if available
         if (instructionDisplay) {
-            instructionDisplay.textContent = currentPhase.instruction || '';
+            const span = instructionDisplay.querySelector('span');
+            if (span) span.textContent = currentPhase.instruction || '';
+            else instructionDisplay.textContent = currentPhase.instruction || '';
         }
 
-        // Apply visuals (only if not null - allows hold to keep previous transform)
-        if (visuals.transform !== null) circle.style.transform = visuals.transform;
-        if (visuals.opacity !== null) circle.style.opacity = visuals.opacity;
-        circle.style.background = visuals.background;
-        circle.style.boxShadow = visuals.boxShadow;
-        createParticles(visuals.particles);
+        // Apply CSS class for animation (new system)
+        orb.classList.remove('inhale', 'hold', 'exhale');
+        orb.classList.add(currentPhase.type);
 
         timeLeft = currentPhase.duration;
         updateTimer();
@@ -3117,6 +4136,11 @@ function runBreathingLoop() {
         // Move to next phase
         AppState.breathingInterval = setTimeout(() => {
             phaseIndex = (phaseIndex + 1) % phases.length; // Loop back to start
+            // Track cycle completion (when we return to first phase)
+            if (phaseIndex === 0) {
+                cycleCount++;
+                updateCycleCount();
+            }
             runPhase();
         }, currentPhase.duration * 1000);
     };
@@ -3345,6 +4369,441 @@ window.startFlowBreathing = () => {
     startBreathingLoop();
 };
 
+// --- WEEKLY RITUALS (Checkbox-Based) ---
+function initWeeklySchedule() {
+    // Ensure weeklySchedule exists (now stores routines with completion tracking)
+    if (!AppState.weeklySchedule) {
+        AppState.weeklySchedule = [];
+    }
+    // Ensure completion tracking exists for current week
+    if (!AppState.routineCompletions) {
+        AppState.routineCompletions = {};
+    }
+    // Check if we need to auto-reset for a new week
+    checkWeeklyReset();
+    updateWeekDates();
+    renderWeeklyRoutines();
+    renderTodayRoutines();
+}
+
+// Get current week identifier (e.g., "2026-W02")
+function getCurrentWeekId() {
+    const now = new Date();
+    const startOfYear = new Date(now.getFullYear(), 0, 1);
+    const days = Math.floor((now - startOfYear) / (24 * 60 * 60 * 1000));
+    const weekNum = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+    return `${now.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+// Check if we need to reset completions for new week
+function checkWeeklyReset() {
+    const currentWeek = getCurrentWeekId();
+    if (AppState.lastRoutineWeek !== currentWeek) {
+        // New week - clear completions
+        AppState.routineCompletions = {};
+        AppState.lastRoutineWeek = currentWeek;
+        saveState();
+    }
+}
+
+// Update week dates in the UI
+function updateWeekDates() {
+    const now = new Date();
+    const dayOfWeek = now.getDay(); // 0 = Sunday
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(now);
+    monday.setDate(now.getDate() + mondayOffset);
+    
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    days.forEach((day, index) => {
+        const dateEl = document.getElementById(`${day}Date`);
+        if (dateEl) {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + index);
+            dateEl.textContent = d.getDate();
+        }
+    });
+    
+    // Update week identifier
+    const weekId = document.getElementById('weekIdentifier');
+    if (weekId) {
+        const weekNum = getCurrentWeekId().split('-W')[1];
+        weekId.textContent = `Week ${parseInt(weekNum)}, ${now.getFullYear()}`;
+    }
+    
+    // Update today's date display
+    const dayNum = document.getElementById('ritualDayNum');
+    const dayName = document.getElementById('ritualDayName');
+    const fullDate = document.getElementById('ritualFullDate');
+    
+    if (dayNum) dayNum.textContent = now.getDate();
+    if (dayName) dayName.textContent = now.toLocaleDateString('en-US', { weekday: 'short' });
+    if (fullDate) fullDate.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+// Open routine modal
+window.openRoutineModal = (presetDay = null) => {
+    // Clear form
+    document.getElementById('routineItemId').value = '';
+    document.getElementById('routineItemName').value = '';
+    document.getElementById('routineItemNotes').value = '';
+    document.getElementById('routineModalTitle').textContent = 'Create New Routine';
+    document.getElementById('saveRoutineBtnText').textContent = 'Create Routine';
+    document.getElementById('deleteRoutineBtn').style.display = 'none';
+    
+    // Clear all day checkboxes
+    document.querySelectorAll('input[name="routineDays"]').forEach(cb => cb.checked = false);
+    
+    // If preset day, check that day
+    if (presetDay) {
+        const cb = document.querySelector(`input[name="routineDays"][value="${presetDay}"]`);
+        if (cb) cb.checked = true;
+    }
+    
+    // Reset category to default
+    const defaultCategory = document.querySelector('input[name="routineCategory"][value="personal"]');
+    if (defaultCategory) defaultCategory.checked = true;
+    
+    // Reset color to default
+    const defaultColor = document.querySelector('input[name="routineColor"][value="#d4af37"]');
+    if (defaultColor) defaultColor.checked = true;
+    
+    openModal('routineModal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+// Quick day selection helpers
+window.selectAllDays = () => {
+    document.querySelectorAll('input[name="routineDays"]').forEach(cb => cb.checked = true);
+};
+
+window.selectWeekdays = () => {
+    document.querySelectorAll('input[name="routineDays"]').forEach(cb => {
+        cb.checked = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'].includes(cb.value);
+    });
+};
+
+window.selectWeekends = () => {
+    document.querySelectorAll('input[name="routineDays"]').forEach(cb => {
+        cb.checked = ['saturday', 'sunday'].includes(cb.value);
+    });
+};
+
+// Edit existing routine
+window.editRoutine = (routineId) => {
+    const routine = AppState.weeklySchedule.find(r => r.id === routineId);
+    if (!routine) return;
+    
+    document.getElementById('routineItemId').value = routine.id;
+    document.getElementById('routineItemName').value = routine.name;
+    document.getElementById('routineItemNotes').value = routine.notes || '';
+    document.getElementById('routineModalTitle').textContent = 'Edit Routine';
+    document.getElementById('saveRoutineBtnText').textContent = 'Save Changes';
+    document.getElementById('deleteRoutineBtn').style.display = 'flex';
+    
+    // Clear and set day checkboxes
+    document.querySelectorAll('input[name="routineDays"]').forEach(cb => {
+        cb.checked = routine.days && routine.days.includes(cb.value);
+    });
+    
+    // Set category
+    const categoryRadio = document.querySelector(`input[name="routineCategory"][value="${routine.category || 'personal'}"]`);
+    if (categoryRadio) categoryRadio.checked = true;
+    
+    // Set color
+    const colorRadio = document.querySelector(`input[name="routineColor"][value="${routine.color || '#d4af37'}"]`);
+    if (colorRadio) colorRadio.checked = true;
+    
+    openModal('routineModal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+// Save routine
+window.saveRoutine = () => {
+    const id = document.getElementById('routineItemId').value;
+    const name = document.getElementById('routineItemName').value.trim();
+    const category = document.querySelector('input[name="routineCategory"]:checked')?.value || 'personal';
+    const notes = document.getElementById('routineItemNotes').value.trim();
+    const color = document.querySelector('input[name="routineColor"]:checked')?.value || '#d4af37';
+    
+    // Get selected days
+    const days = [];
+    document.querySelectorAll('input[name="routineDays"]:checked').forEach(cb => {
+        days.push(cb.value);
+    });
+    
+    if (!name) {
+        showNotification('Please enter a ritual name', 'error');
+        return;
+    }
+    
+    if (days.length === 0) {
+        showNotification('Please select at least one day', 'error');
+        return;
+    }
+    
+    if (!AppState.weeklySchedule) {
+        AppState.weeklySchedule = [];
+    }
+    
+    if (id) {
+        // Update existing
+        const index = AppState.weeklySchedule.findIndex(r => r.id === id);
+        if (index !== -1) {
+            AppState.weeklySchedule[index] = {
+                ...AppState.weeklySchedule[index],
+                name, category, notes, color, days
+            };
+        }
+        showNotification('Ritual updated!', 'success');
+    } else {
+        // Add new
+        AppState.weeklySchedule.push({
+            id: 'routine_' + Date.now(),
+            name, category, notes, color, days,
+            createdAt: new Date().toISOString()
+        });
+        showNotification('Ritual created!', 'success');
+    }
+    
+    saveState();
+    closeModal('routineModal');
+    renderWeeklyRoutines();
+    renderTodayRoutines();
+};
+
+// Delete routine
+window.deleteRoutine = () => {
+    const id = document.getElementById('routineItemId').value;
+    if (!id) return;
+    
+    if (confirm('Delete this ritual from your weekly schedule?')) {
+        AppState.weeklySchedule = AppState.weeklySchedule.filter(r => r.id !== id);
+        // Also remove any completions for this routine
+        Object.keys(AppState.routineCompletions).forEach(key => {
+            if (key.startsWith(id + '_')) {
+                delete AppState.routineCompletions[key];
+            }
+        });
+        saveState();
+        closeModal('routineModal');
+        renderWeeklyRoutines();
+        renderTodayRoutines();
+        showNotification('Ritual deleted', 'success');
+    }
+};
+
+// Toggle routine completion checkbox
+window.toggleRoutineCheck = (routineId, day, event) => {
+    if (event) event.stopPropagation();
+    
+    const key = `${routineId}_${day}`;
+    if (!AppState.routineCompletions) {
+        AppState.routineCompletions = {};
+    }
+    
+    AppState.routineCompletions[key] = !AppState.routineCompletions[key];
+    saveState();
+    
+    // Re-render for visual updates
+    renderWeeklyRoutines();
+    renderTodayRoutines();
+    
+    // Celebration for completing
+    if (AppState.routineCompletions[key]) {
+        const routine = AppState.weeklySchedule.find(r => r.id === routineId);
+        if (routine) {
+            showNotification(`✨ ${routine.name} complete!`, 'success');
+        }
+    }
+};
+
+// Reset all checkboxes for the week
+window.resetWeeklyChecks = () => {
+    if (confirm('Reset all checkboxes for this week? This will clear all completion marks.')) {
+        AppState.routineCompletions = {};
+        AppState.lastRoutineWeek = getCurrentWeekId();
+        saveState();
+        renderWeeklyRoutines();
+        renderTodayRoutines();
+        showNotification('Weekly schedule reset!', 'success');
+    }
+};
+
+// Render the weekly routines grid
+function renderWeeklyRoutines() {
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    const categoryIcons = {
+        work: '💼', health: '💪', personal: '✨', social: '👥',
+        learning: '📚', creative: '🎨', spiritual: '⭐', meditation: '🧘',
+        chakra: '🌈', magick: '🔮', other: '📌'
+    };
+    
+    const todayIndex = new Date().getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayName = dayNames[todayIndex];
+    
+    days.forEach(day => {
+        const container = document.getElementById(`${day}-routines`);
+        if (!container) return;
+        
+        // Filter routines for this day
+        const dayRoutines = (AppState.weeklySchedule || [])
+            .filter(routine => routine.days && routine.days.includes(day));
+        
+        // Highlight today's column
+        const column = container.closest('.week-day-column');
+        if (column) {
+            column.classList.toggle('today', day === todayName);
+        }
+        
+        if (dayRoutines.length === 0) {
+            container.innerHTML = `
+                <div class="day-empty-state">
+                    <i data-lucide="calendar-off"></i>
+                    <span>No routines</span>
+                </div>
+            `;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+            return;
+        }
+        
+        container.innerHTML = dayRoutines.map(routine => {
+            const key = `${routine.id}_${day}`;
+            const isChecked = AppState.routineCompletions && AppState.routineCompletions[key];
+            const icon = categoryIcons[routine.category] || '✨';
+            
+            return `
+                <div class="day-routine-chip ${isChecked ? 'completed' : ''}" 
+                     style="--routine-color: ${routine.color || '#d4af37'}"
+                     onclick="editRoutine('${routine.id}')">
+                    <div class="chip-check" onclick="toggleRoutineCheck('${routine.id}', '${day}', event)">
+                        <i data-lucide="check"></i>
+                    </div>
+                    <span class="chip-name">${icon} ${routine.name}</span>
+                </div>
+            `;
+        }).join('');
+        
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    });
+    
+    // Update stats
+    updateRitualStats();
+}
+
+// Render today's routines with progress tracking
+function renderTodayRoutines() {
+    const container = document.getElementById('todayRitualsList');
+    if (!container) return;
+    
+    const now = new Date();
+    const todayIndex = now.getDay();
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const todayName = dayNames[todayIndex];
+    
+    // Filter routines for today
+    const todayRoutines = (AppState.weeklySchedule || [])
+        .filter(routine => routine.days && routine.days.includes(todayName));
+    
+    const categoryIcons = {
+        work: '💼', health: '💪', personal: '✨', social: '👥',
+        learning: '📚', creative: '🎨', spiritual: '⭐', meditation: '🧘',
+        chakra: '🌈', magick: '🔮', other: '📌'
+    };
+    
+    if (todayRoutines.length === 0) {
+        container.innerHTML = `
+            <div class="today-routines-empty">
+                <i data-lucide="calendar-off"></i>
+                <p>No routines scheduled for today</p>
+                <button class="btn btn-sm btn-outline" onclick="openRoutineModal('${todayName}')">
+                    <i data-lucide="plus"></i> Add
+                </button>
+            </div>
+        `;
+        updateProgressRing(0, 0);
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+        return;
+    }
+    
+    const completed = todayRoutines.filter(routine => {
+        const key = `${routine.id}_${todayName}`;
+        return AppState.routineCompletions && AppState.routineCompletions[key];
+    }).length;
+    
+    container.innerHTML = todayRoutines.map(routine => {
+        const key = `${routine.id}_${todayName}`;
+        const isChecked = AppState.routineCompletions && AppState.routineCompletions[key];
+        const icon = categoryIcons[routine.category] || '✨';
+        
+        return `
+            <div class="today-routine-card ${isChecked ? 'completed' : ''}" 
+                 style="--routine-color: ${routine.color || '#d4af37'}">
+                <button class="routine-check-btn ${isChecked ? 'checked' : ''}"
+                        onclick="toggleRoutineCheck('${routine.id}', '${todayName}', event)">
+                    <i data-lucide="${isChecked ? 'check' : 'circle'}"></i>
+                </button>
+                <div class="today-routine-info" onclick="editRoutine('${routine.id}')">
+                    <span class="today-routine-name">${routine.name}</span>
+                    <span class="today-routine-category">${icon} ${routine.category || 'Personal'}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    updateProgressRing(completed, todayRoutines.length);
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// Update the circular progress ring
+function updateProgressRing(completed, total) {
+    const ring = document.getElementById('sacredProgressRing');
+    const percentEl = document.getElementById('sacredProgressPercent');
+    const completedEl = document.getElementById('ritualsCompletedToday');
+    const remainingEl = document.getElementById('ritualsRemainingToday');
+    
+    const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+    // New smaller ring: 2 * PI * 18 = 113.1
+    const circumference = 113.1;
+    const offset = circumference - (percent / 100) * circumference;
+    
+    if (ring) {
+        ring.style.strokeDasharray = circumference;
+        ring.style.strokeDashoffset = offset;
+        ring.style.stroke = percent === 100 ? '#4caf50' : 'var(--gold-primary)';
+    }
+    if (percentEl) percentEl.textContent = `${percent}%`;
+    if (completedEl) completedEl.textContent = completed;
+    if (remainingEl) remainingEl.textContent = total - completed;
+}
+
+// Update ritual stats
+function updateRitualStats() {
+    const totalEl = document.getElementById('totalWeeklyRituals');
+    if (totalEl) {
+        const total = (AppState.weeklySchedule || []).reduce((sum, r) => sum + (r.days?.length || 0), 0);
+        totalEl.textContent = total;
+    }
+}
+
+// Legacy function wrappers for backwards compatibility
+function renderWeeklySchedule() {
+    renderWeeklyRoutines();
+}
+
+function renderTodayActivities() {
+    renderTodayRoutines();
+}
+
+function formatTime12h(time24) {
+    if (!time24) return '';
+    const [hours, mins] = time24.split(':').map(Number);
+    const period = hours >= 12 ? 'PM' : 'AM';
+    const h = hours % 12 || 12;
+    return `${h}:${mins.toString().padStart(2, '0')} ${period}`;
+}
+
 // --- JOURNAL ---
 function initJournal() {
     renderJournal();
@@ -3550,28 +5009,152 @@ function renderJournal() {
     });
 }
 
-// --- MASTERY ---
+// --- MASTERY - COMPLETE REDESIGN ---
+let masteryWizardStep = 1;
+let masteryCurrentTab = 'active';
+
 function initMastery() {
     // Icon selection logic
     const iconGrid = document.getElementById('masteryIconGrid');
     if (iconGrid) {
-        iconGrid.querySelectorAll('.mastery-icon-option').forEach(opt => {
+        iconGrid.querySelectorAll('.mastery-icon-btn').forEach(opt => {
             opt.onclick = () => {
-                iconGrid.querySelectorAll('.mastery-icon-option').forEach(o => o.classList.remove('active'));
+                iconGrid.querySelectorAll('.mastery-icon-btn').forEach(o => o.classList.remove('active'));
                 opt.classList.add('active');
                 document.getElementById('masteryIcon').value = opt.dataset.icon;
+                updateMasteryPreview();
             };
         });
     }
+
+    // Type selector logic
+    document.querySelectorAll('.type-card').forEach(card => {
+        card.onclick = () => {
+            document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            card.querySelector('input[type="radio"]').checked = true;
+            updateMasteryPreview();
+        };
+    });
+
+    // Color selector logic
+    document.querySelectorAll('.color-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            btn.querySelector('input[type="radio"]').checked = true;
+            updateMasteryPreview();
+        };
+    });
+
     renderMastery();
+    updateMasteryOverview();
+}
+
+// Wizard navigation
+window.masteryWizardNext = () => {
+    if (masteryWizardStep === 1) {
+        const name = document.getElementById('masteryName').value.trim();
+        if (!name) {
+            showNotification('Please enter a goal name', 'error');
+            return;
+        }
+    }
+
+    if (masteryWizardStep < 3) {
+        masteryWizardStep++;
+        updateWizardUI();
+    }
+};
+
+window.masteryWizardPrev = () => {
+    if (masteryWizardStep > 1) {
+        masteryWizardStep--;
+        updateWizardUI();
+    }
+};
+
+function updateWizardUI() {
+    // Update step indicators
+    document.querySelectorAll('.wizard-step').forEach((step, idx) => {
+        const stepNum = idx + 1;
+        step.classList.remove('active', 'completed');
+        if (stepNum < masteryWizardStep) step.classList.add('completed');
+        if (stepNum === masteryWizardStep) step.classList.add('active');
+    });
+
+    // Update panels
+    document.querySelectorAll('.wizard-panel').forEach(panel => {
+        panel.classList.remove('active');
+        if (parseInt(panel.dataset.panel) === masteryWizardStep) {
+            panel.classList.add('active');
+        }
+    });
+
+    // Update buttons
+    document.getElementById('masteryPrevBtn').style.display = masteryWizardStep > 1 ? 'block' : 'none';
+    document.getElementById('masteryNextBtn').style.display = masteryWizardStep < 3 ? 'block' : 'none';
+    document.getElementById('masterySaveBtn').style.display = masteryWizardStep === 3 ? 'block' : 'none';
+
+    // Update preview on step 3
+    if (masteryWizardStep === 3) {
+        updateMasteryPreview();
+    }
+}
+
+window.selectGoalPreset = (value) => {
+    document.querySelectorAll('.goal-preset').forEach(p => p.classList.remove('active'));
+    const btn = document.querySelector(`.goal-preset[data-value="${value}"]`);
+    if (btn) btn.classList.add('active');
+
+    const customGroup = document.getElementById('customHoursGroup');
+    if (value === 'custom') {
+        customGroup.style.display = 'block';
+        document.getElementById('masteryGoal').value = 'custom';
+    } else {
+        customGroup.style.display = 'none';
+        document.getElementById('masteryGoal').value = value;
+    }
+    updateMasteryPreview();
+};
+
+function updateMasteryPreview() {
+    const name = document.getElementById('masteryName').value || 'Your Goal';
+    const icon = document.getElementById('masteryIcon').value || '🧘';
+    const type = document.querySelector('input[name="masteryType"]:checked')?.value || 'hours';
+    const colorInput = document.querySelector('input[name="masteryColor"]:checked');
+    const color = colorInput ? colorInput.value : '#d4af37';
+
+    let goal = document.getElementById('masteryGoal').value;
+    if (goal === 'custom') {
+        goal = parseInt(document.getElementById('customHours').value) || 10000;
+    } else {
+        goal = parseInt(goal) || 10000;
+    }
+
+    const unitLabel = type === 'hours' ? 'hours' : 'reps';
+
+    // Update preview card
+    document.getElementById('previewIcon').textContent = icon;
+    document.getElementById('previewName').textContent = name;
+    document.getElementById('previewTarget').textContent = `0 / ${goal.toLocaleString()} ${unitLabel}`;
+
+    // Update preview card color
+    const previewCard = document.getElementById('masteryPreviewCard');
+    if (previewCard) {
+        previewCard.style.background = `linear-gradient(135deg, ${color}20, transparent)`;
+        previewCard.style.borderColor = color;
+    }
 }
 
 window.openMasteryModal = () => {
+    masteryWizardStep = 1;
+
     // Reset form
-    document.getElementById('masteryModalTitle').textContent = 'New Mastery Goal';
-    document.getElementById('masterySaveBtn').textContent = 'Create Mastery';
+    document.getElementById('masteryModalTitle').textContent = 'Create Mastery Goal';
+    document.getElementById('masterySaveBtn').textContent = 'Create Goal';
     document.getElementById('masteryName').value = '';
-    document.getElementById('masteryGoal').value = '10';
+    document.getElementById('masteryGoal').value = '10000';
     document.getElementById('customHours').value = '';
     document.getElementById('customHoursGroup').style.display = 'none';
     document.getElementById('masteryIcon').value = '🧘';
@@ -3579,11 +5162,33 @@ window.openMasteryModal = () => {
     // Reset icon grid
     const iconGrid = document.getElementById('masteryIconGrid');
     if (iconGrid) {
-        iconGrid.querySelectorAll('.mastery-icon-option').forEach(o => o.classList.remove('active'));
-        iconGrid.querySelector('[data-icon="🧘"]').classList.add('active');
+        iconGrid.querySelectorAll('.mastery-icon-btn').forEach(o => o.classList.remove('active'));
+        const defaultIcon = iconGrid.querySelector('[data-icon="🧘"]');
+        if (defaultIcon) defaultIcon.classList.add('active');
     }
 
+    // Reset type selector
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
+    const hoursCard = document.querySelector('.type-card[data-type="hours"]');
+    if (hoursCard) hoursCard.classList.add('active');
+    const hoursRadio = document.querySelector('input[name="masteryType"][value="hours"]');
+    if (hoursRadio) hoursRadio.checked = true;
+
+    // Reset goal presets
+    document.querySelectorAll('.goal-preset').forEach(p => p.classList.remove('active'));
+    const defaultPreset = document.querySelector('.goal-preset[data-value="10000"]');
+    if (defaultPreset) defaultPreset.classList.add('active');
+
+    // Reset color picker
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    const defaultColor = document.querySelector('.color-btn[data-color="#d4af37"]');
+    if (defaultColor) defaultColor.classList.add('active');
+    const goldRadio = document.querySelector('input[name="masteryColor"][value="#d4af37"]');
+    if (goldRadio) goldRadio.checked = true;
+
     delete window.editingMasteryId;
+    updateWizardUI();
+    updateMasteryPreview();
     window.openModal('masteryModal');
 };
 
@@ -3597,23 +5202,50 @@ window.toggleCustomGoal = () => {
 
 window.toggleMasteryInput = (type) => {
     const label = document.getElementById('masteryGoalLabel');
-    if (label) label.textContent = type === 'hours' ? 'Goal (Hours)' : 'Goal (Reps/Count)';
+    if (label) label.textContent = type === 'hours' ? 'Set your target (Hours)' : 'Set your target (Reps)';
+};
+
+window.switchMasteryTab = (tab) => {
+    masteryCurrentTab = tab;
+    document.querySelectorAll('.mastery-tab').forEach(t => {
+        t.classList.toggle('active', t.dataset.tab === tab);
+    });
+
+    document.getElementById('masteryGrid').style.display = tab === 'active' ? 'grid' : 'none';
+    document.getElementById('masteryCompletedGrid').style.display = tab === 'completed' ? 'grid' : 'none';
+    document.getElementById('masteryArchivedGrid').style.display = tab === 'archived' ? 'grid' : 'none';
+    document.getElementById('noMastery').style.display = 'none';
+
+    renderMastery();
+};
+
+window.toggleMasteryView = () => {
+    const grid = document.getElementById('masteryGrid');
+    const icon = document.getElementById('masteryViewIcon');
+    if (grid.style.gridTemplateColumns === '1fr') {
+        grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(340px, 1fr))';
+        icon.textContent = '◫';
+    } else {
+        grid.style.gridTemplateColumns = '1fr';
+        icon.textContent = '☰';
+    }
 };
 
 window.saveMastery = () => {
-    const name = document.getElementById('masteryName').value;
+    const name = document.getElementById('masteryName').value.trim();
     if (!name) return showNotification('Please enter a goal name', 'error');
 
-    const type = document.querySelector('input[name="masteryType"]:checked').value;
+    const type = document.querySelector('input[name="masteryType"]:checked')?.value || 'hours';
     const icon = document.getElementById('masteryIcon').value || '🧘';
-    const color = document.querySelector('input[name="masteryColor"]:checked').value;
-    let goal;
-
-    if (document.getElementById('masteryGoal').value === 'custom') {
+    const colorInput = document.querySelector('input[name="masteryColor"]:checked');
+    const color = colorInput ? colorInput.value : '#d4af37';
+    
+    let goal = document.getElementById('masteryGoal').value;
+    if (goal === 'custom') {
         goal = parseInt(document.getElementById('customHours').value);
         if (!goal || goal <= 0) return showNotification('Please enter a valid custom goal number', 'error');
     } else {
-        goal = parseInt(document.getElementById('masteryGoal').value);
+        goal = parseInt(goal) || 10000;
     }
 
     if (window.editingMasteryId) {
@@ -3636,229 +5268,575 @@ window.saveMastery = () => {
             currentHours: 0,
             color: color,
             created: new Date().toISOString(),
-            lastLog: null
+            lastLog: null,
+            logs: [],
+            archived: false,
+            streak: 0,
+            lastStreakDate: null
         };
         AppState.mastery.push(item);
-        showNotification('Mastery goal created!', 'gold');
+        showNotification('Mastery goal created! 🎯', 'gold');
     }
 
     saveState();
     renderMastery();
+    updateMasteryOverview();
     window.closeModal('masteryModal');
 };
+
+function updateMasteryOverview() {
+    const activeMastery = AppState.mastery.filter(m => !m.archived && m.currentHours < m.goalHours);
+    const completedMastery = AppState.mastery.filter(m => m.currentHours >= m.goalHours);
+
+    // Total active goals
+    document.getElementById('totalMasteryGoals').textContent = activeMastery.length;
+
+    // Total hours across all goals
+    const totalHours = AppState.mastery.reduce((sum, m) => {
+        return sum + (m.type === 'hours' ? m.currentHours : 0);
+    }, 0);
+    document.getElementById('totalMasteryHours').textContent = totalHours >= 1000 
+        ? `${(totalHours / 1000).toFixed(1)}k` 
+        : `${Math.round(totalHours)}h`;
+
+    // Mastery streak (days with any log)
+    const today = new Date().toISOString().split('T')[0];
+    let streakCount = 0;
+    const hasLogToday = AppState.mastery.some(m => m.lastLog && m.lastLog.startsWith(today));
+    if (hasLogToday) streakCount = 1;
+
+    // Count consecutive days backward
+    let checkDate = new Date();
+    checkDate.setDate(checkDate.getDate() - 1);
+    for (let i = 0; i < 365; i++) {
+        const dateStr = checkDate.toISOString().split('T')[0];
+        const hasLog = AppState.mastery.some(m => 
+            m.logs && m.logs.some(l => l.date && l.date.startsWith(dateStr))
+        );
+        if (hasLog) {
+            streakCount++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            break;
+        }
+    }
+    document.getElementById('masteryStreak').textContent = streakCount;
+
+    // Completed masteries
+    document.getElementById('completedMasteries').textContent = completedMastery.length;
+}
+
+function getMasteryTier(pct) {
+    if (pct >= 100) return { name: 'Master', icon: '👑', color: '#ffd700' };
+    if (pct >= 75) return { name: 'Expert', icon: '⭐', color: 'var(--mastery-platinum)' };
+    if (pct >= 50) return { name: 'Skilled', icon: '💎', color: 'var(--mastery-gold)' };
+    if (pct >= 25) return { name: 'Adept', icon: '🔷', color: 'var(--mastery-silver)' };
+    if (pct >= 10) return { name: 'Novice', icon: '🔹', color: 'var(--mastery-bronze)' };
+    return { name: 'Beginner', icon: '○', color: 'var(--text-muted)' };
+}
 
 function renderMastery() {
     const grid = document.getElementById('masteryGrid');
     const completedGrid = document.getElementById('masteryCompletedGrid');
+    const archivedGrid = document.getElementById('masteryArchivedGrid');
     if (!grid) return;
+
     grid.innerHTML = '';
     if (completedGrid) completedGrid.innerHTML = '';
+    if (archivedGrid) archivedGrid.innerHTML = '';
 
-    const activeMastery = AppState.mastery.filter(m => m.currentHours < m.goalHours);
-    const completedMastery = AppState.mastery.filter(m => m.currentHours >= m.goalHours);
+    const activeMastery = AppState.mastery.filter(m => !m.archived && m.currentHours < m.goalHours);
+    const completedMastery = AppState.mastery.filter(m => !m.archived && m.currentHours >= m.goalHours);
+    const archivedMastery = AppState.mastery.filter(m => m.archived);
 
-    if (activeMastery.length === 0) {
-        if (document.getElementById('noMastery')) document.getElementById('noMastery').style.display = 'flex';
+    // Show empty state only for active tab
+    if (masteryCurrentTab === 'active') {
+        document.getElementById('noMastery').style.display = activeMastery.length === 0 ? 'flex' : 'none';
     } else {
-        if (document.getElementById('noMastery')) document.getElementById('noMastery').style.display = 'none';
+        document.getElementById('noMastery').style.display = 'none';
     }
 
-    // Show/hide completed section
-    const completedSection = document.getElementById('masteryCompletedSection');
-    if (completedSection) {
-        completedSection.style.display = completedMastery.length > 0 ? 'block' : 'none';
+    // Render active mastery cards
+    activeMastery.forEach(m => {
+        grid.appendChild(createMasteryCard(m, false));
+    });
+
+    // Render completed mastery cards
+    completedMastery.forEach(m => {
+        if (completedGrid) completedGrid.appendChild(createMasteryCard(m, true));
+    });
+
+    // Render archived mastery cards
+    archivedMastery.forEach(m => {
+        if (archivedGrid) archivedGrid.appendChild(createMasteryCard(m, false, true));
+    });
+
+    updateMasteryOverview();
+    
+    // Re-initialize Lucide icons for dynamic content
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
     }
+}
 
-    activeMastery.forEach((m) => {
-        const el = document.createElement('div');
-        el.className = 'mastery-card-enhanced';
-        el.style.setProperty('--card-color', m.color);
-        el.draggable = true;
-        el.dataset.id = m.id;
+// Track active mastery timers
+let activeMasteryTimers = {};
 
-        const pct = Math.min((m.currentHours / m.goalHours) * 100, 100);
-        const unitLabel = m.type === 'reps' ? 'Reps' : 'Hrs';
+function createMasteryCard(m, isCompleted = false, isArchived = false) {
+    const el = document.createElement('div');
+    const isTimerActive = activeMasteryTimers[m.id];
+    el.className = `mastery-card-new${isCompleted ? ' completed' : ''}${isArchived ? ' archived' : ''}${isTimerActive ? ' timer-active' : ''}`;
+    el.style.setProperty('--card-color', m.color || '#d4af37');
+    el.style.setProperty('--card-glow', `${m.color || '#d4af37'}40`);
+    el.dataset.id = m.id;
 
-        let tier = 'Bronze';
-        let tierColor = 'var(--mastery-bronze)';
-        if (pct >= 100) { tier = 'Master'; tierColor = 'var(--mastery-platinum)'; }
-        else if (pct >= 75) { tier = 'Platinum'; tierColor = 'var(--mastery-platinum)'; }
-        else if (pct >= 50) { tier = 'Gold'; tierColor = 'var(--mastery-gold)'; }
-        else if (pct >= 25) { tier = 'Silver'; tierColor = 'var(--mastery-silver)'; }
+    const pct = Math.min((m.currentHours / m.goalHours) * 100, 100);
+    const tier = getMasteryTier(pct);
+    const unitLabel = m.type === 'reps' ? 'reps' : 'hrs';
+    const unitLabelFull = m.type === 'reps' ? 'Reps' : 'Hours';
+    const lastLogText = m.lastLog ? formatRelativeTime(m.lastLog) : 'Never logged';
 
-        const lastLogText = m.lastLog ? formatRelativeTime(m.lastLog) : 'Never';
+    // Calculate progress ring stroke
+    const circumference = 314; // 2 * PI * 50 (radius)
+    const strokeOffset = circumference - (pct / 100) * circumference;
 
-        el.innerHTML = `
-            <div class="drag-handle">⋮⋮</div>
-            <div class="mastery-tier-badge" style="--tier-color: ${tierColor}">${tier}</div>
+    // Format numbers nicely
+    const currentFormatted = m.type === 'reps' 
+        ? Math.round(m.currentHours).toLocaleString()
+        : m.currentHours.toFixed(1);
+    const goalFormatted = m.goalHours.toLocaleString();
+
+    // Milestone achievements
+    const milestones = [
+        { pct: 25, achieved: pct >= 25 },
+        { pct: 50, achieved: pct >= 50 },
+        { pct: 75, achieved: pct >= 75 },
+        { pct: 100, achieved: pct >= 100 }
+    ];
+
+    // Timer/Counter display
+    const timerState = activeMasteryTimers[m.id];
+    const timerDisplay = timerState ? formatMasteryTimerDisplay(timerState.elapsed) : '00:00:00';
+    const repsCount = timerState ? timerState.reps : 0;
+
+    el.innerHTML = `
+        <div class="mastery-card-header">
+            <div class="mastery-tier-new" style="--tier-color: ${tier.color}">
+                <span class="tier-icon">${tier.icon}</span>
+                ${tier.name}
+            </div>
+            <div class="mastery-card-icon">${m.icon || '🧘'}</div>
+            <div class="mastery-card-title">${m.name}</div>
+            <div class="mastery-card-meta">
+                <span><i data-lucide="calendar"></i> ${lastLogText}</span>
+                ${m.streak > 0 ? `<span class="streak-badge"><i data-lucide="flame"></i> ${m.streak}</span>` : ''}
+            </div>
+        </div>
+        
+        <div class="mastery-card-body">
+            <div class="mastery-progress-ring">
+                <div class="progress-ring-container">
+                    <svg class="progress-ring-svg" viewBox="0 0 120 120">
+                        <circle class="progress-ring-bg" cx="60" cy="60" r="50"/>
+                        <circle class="progress-ring-fill" cx="60" cy="60" r="50" 
+                            style="stroke-dashoffset: ${strokeOffset}; stroke: ${m.color || 'var(--gold-primary)'}"/>
+                    </svg>
+                    <div class="progress-ring-center">
+                        <span class="progress-pct">${Math.round(pct)}%</span>
+                        <span class="progress-label">Complete</span>
+                    </div>
+                </div>
+            </div>
             
-            <div class="mastery-title-group">
-                <span class="mastery-title">${m.icon || '🧘'} ${m.name}</span>
-                <span class="mastery-subtitle">Last log: ${lastLogText}</span>
-            </div>
-
-            <div class="mastery-stats-v2">
-                <div class="stat-item-v2">
-                    <span class="stat-label-v2">Progress</span>
-                    <span class="stat-value-v2">${parseFloat(m.currentHours).toFixed(m.type === 'reps' ? 0 : 1)} ${unitLabel}</span>
+            <div class="mastery-stats-row">
+                <div class="mastery-stat">
+                    <div class="mastery-stat-value">${currentFormatted}</div>
+                    <div class="mastery-stat-label">${unitLabelFull} Logged</div>
                 </div>
-                <div class="stat-item-v2" style="align-items: flex-end;">
-                    <span class="stat-label-v2">Target</span>
-                    <span class="stat-value-v2">${m.goalHours} ${unitLabel}</span>
+                <div class="mastery-stat">
+                    <div class="mastery-stat-value">${goalFormatted}</div>
+                    <div class="mastery-stat-label">${unitLabelFull} Goal</div>
                 </div>
             </div>
 
-            <div class="mastery-progress-section">
-                <div class="progress-header-v2">
-                    <span class="stat-label-v2">Mastery level</span>
-                    <span class="pct-v2">${Math.round(pct)}%</span>
-                </div>
-                <div class="mastery-progress-bg-v2">
-                    <div class="mastery-progress-fill-v2" style="width:${pct}%"></div>
-                </div>
+            <div class="mastery-milestones">
+                ${milestones.map(ms => `
+                    <div class="milestone ${ms.achieved ? 'achieved' : ''}" style="--card-color: ${m.color}">
+                        <div class="milestone-marker">${ms.achieved ? '<i data-lucide="check"></i>' : ms.pct}</div>
+                        <span class="milestone-label">${ms.pct}%</span>
+                    </div>
+                `).join('')}
             </div>
 
-            <div class="mastery-actions-v3">
-                <button class="btn-mastery-action" onclick="openMasteryLogModal(${m.id})">
-                    <span>➕</span> Log
-                </button>
-                <button class="btn-mastery-action" style="flex:0 0 45px;" onclick="editMastery(${m.id})" title="Edit">
-                    ✎
-                </button>
-                <button class="btn-mastery-action" style="flex:0 0 45px; color:var(--accent-red);" onclick="deleteMastery(${m.id})" title="Delete">
-                    ×
-                </button>
+            <div class="mastery-actions-new" id="masteryActions-${m.id}">
+                ${isArchived ? `
+                    <button class="mastery-btn mastery-btn-secondary" onclick="unarchiveMastery(${m.id})">
+                        <i data-lucide="upload"></i> Restore
+                    </button>
+                    <button class="mastery-btn mastery-btn-icon danger" onclick="deleteMastery(${m.id})" title="Delete permanently">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                ` : isCompleted ? `
+                    <button class="mastery-btn mastery-btn-primary" onclick="openMasteryLogModal(${m.id})">
+                        <i data-lucide="plus"></i> Continue
+                    </button>
+                    <button class="mastery-btn mastery-btn-icon" onclick="archiveMastery(${m.id})" title="Archive">
+                        <i data-lucide="archive"></i>
+                    </button>
+                ` : m.type === 'hours' ? `
+                    ${isTimerActive ? `
+                        <button class="mastery-btn timer-active-btn" id="timerBtn-${m.id}">
+                            <span class="timer-time" id="timerDisplay-${m.id}">${timerDisplay}</span>
+                        </button>
+                        <button class="mastery-btn mastery-btn-icon" onclick="pauseMasteryTimer(${m.id})" title="Pause">
+                            <i data-lucide="pause"></i>
+                        </button>
+                        <button class="mastery-btn mastery-btn-icon save" onclick="stopMasteryTimer(${m.id})" title="Save">
+                            <i data-lucide="check"></i>
+                        </button>
+                    ` : `
+                        <button class="mastery-btn mastery-btn-primary" onclick="startMasteryTimer(${m.id})">
+                            <i data-lucide="play"></i> Start
+                        </button>
+                        <button class="mastery-btn mastery-btn-secondary" onclick="openMasteryLogModal(${m.id})">
+                            <i data-lucide="pencil"></i> Log
+                        </button>
+                    `}
+                    <button class="mastery-btn mastery-btn-icon" onclick="showMasteryMenu(${m.id}, event)" title="More">
+                        <i data-lucide="more-vertical"></i>
+                    </button>
+                ` : `
+                    <div class="counter-inline" id="counterArea-${m.id}">
+                        <button class="counter-btn-mini" onclick="adjustMasteryCounter(${m.id}, -1)"><i data-lucide="minus"></i></button>
+                        <span class="counter-num" id="counterDisplay-${m.id}">${repsCount}</span>
+                        <button class="counter-btn-mini plus" onclick="adjustMasteryCounter(${m.id}, 1)"><i data-lucide="plus"></i></button>
+                    </div>
+                    ${repsCount > 0 ? `
+                        <button class="mastery-btn mastery-btn-primary" onclick="saveMasteryCounter(${m.id})">
+                            <i data-lucide="check"></i> Save
+                        </button>
+                    ` : `
+                        <button class="mastery-btn mastery-btn-secondary" onclick="openMasteryLogModal(${m.id})">
+                            <i data-lucide="pencil"></i> Log
+                        </button>
+                    `}
+                    <button class="mastery-btn mastery-btn-icon" onclick="showMasteryMenu(${m.id}, event)" title="More">
+                        <i data-lucide="more-vertical"></i>
+                    </button>
+                `}
             </div>
-        `;
+        </div>
+    `;
 
-        // Drag events
-        el.addEventListener('dragstart', (e) => {
-            e.dataTransfer.setData('text/plain', m.id);
-            el.classList.add('dragging');
-            document.body.classList.add('no-scroll');
-        });
-        el.addEventListener('dragend', () => {
-            el.classList.remove('dragging');
-            document.body.classList.remove('no-scroll');
-        });
-        el.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            el.classList.add('drag-over');
-        });
-        el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
-        el.addEventListener('drop', (e) => {
-            e.preventDefault();
-            el.classList.remove('drag-over');
-            const fromId = parseInt(e.dataTransfer.getData('text/plain'));
-            const toId = m.id;
-            if (fromId !== toId) {
-                const fromIndex = AppState.mastery.findIndex(x => x.id === fromId);
-                const toIndex = AppState.mastery.findIndex(x => x.id === toId);
-                const [moved] = AppState.mastery.splice(fromIndex, 1);
-                AppState.mastery.splice(toIndex, 0, moved);
-                saveState();
-                renderMastery();
-                showNotification('Mastery order updated', 'normal');
-            }
-        });
+    return el;
+}
 
-        // Mobile Drag Support
-        addMobileDragSupport(el, '.drag-handle', (from, to) => {
-            const [moved] = AppState.mastery.splice(from, 1);
-            AppState.mastery.splice(to, 0, moved);
+window.showMasteryMenu = (id, event) => {
+    event.stopPropagation();
+    
+    // Remove any existing menu
+    document.querySelectorAll('.mastery-context-menu').forEach(m => m.remove());
+    
+    const menu = document.createElement('div');
+    menu.className = 'mastery-context-menu';
+    menu.innerHTML = `
+        <button onclick="archiveMastery(${id})"><i data-lucide="archive"></i> Archive</button>
+        <button onclick="resetMasteryProgress(${id})"><i data-lucide="refresh-cw"></i> Reset Progress</button>
+        <div class="menu-divider"></div>
+        <button onclick="deleteMastery(${id})" class="danger"><i data-lucide="trash-2"></i> Delete</button>
+    `;
+    
+    document.body.appendChild(menu);
+    
+    // Smart positioning - check bounds after adding to DOM
+    const menuRect = menu.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let top = event.clientY;
+    let left = event.clientX;
+    
+    // Adjust if menu would go off right edge
+    if (left + menuRect.width > viewportWidth - 10) {
+        left = viewportWidth - menuRect.width - 10;
+    }
+    
+    // Adjust if menu would go off bottom edge - show above click point
+    if (top + menuRect.height > viewportHeight - 10) {
+        top = top - menuRect.height - 10;
+        if (top < 10) top = 10;
+    }
+    
+    // Ensure left doesn't go negative
+    if (left < 10) left = 10;
+    
+    menu.style.top = `${top}px`;
+    menu.style.left = `${left}px`;
+    
+    // Close on click outside
+    setTimeout(() => {
+        document.addEventListener('click', function closeMenu() {
+            menu.remove();
+            document.removeEventListener('click', closeMenu);
+        });
+    }, 10);
+};
+
+window.archiveMastery = (id) => {
+    const m = AppState.mastery.find(x => x.id === id);
+    if (m) {
+        m.archived = true;
+        saveState();
+        renderMastery();
+        showNotification('Goal archived', 'normal');
+    }
+};
+
+window.unarchiveMastery = (id) => {
+    const m = AppState.mastery.find(x => x.id === id);
+    if (m) {
+        m.archived = false;
+        saveState();
+        renderMastery();
+        showNotification('Goal restored', 'gold');
+    }
+};
+
+window.resetMasteryProgress = (id) => {
+    showConfirmModal('Reset Progress', 'Reset all progress for this goal? This cannot be undone.', () => {
+        const m = AppState.mastery.find(x => x.id === id);
+        if (m) {
+            m.currentHours = 0;
+            m.logs = [];
+            m.lastLog = null;
             saveState();
             renderMastery();
-            showNotification('Mastery order updated', 'normal');
+            showNotification('Progress reset', 'normal');
+        }
+    });
+};
+
+// ============================================
+// MASTERY LIVE TIMER & COUNTER FUNCTIONS
+// ============================================
+
+function formatMasteryTimerDisplay(seconds) {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+}
+
+window.startMasteryTimer = (id) => {
+    const m = AppState.mastery.find(x => x.id === id);
+    if (!m) return;
+
+    // Initialize timer state
+    activeMasteryTimers[id] = {
+        elapsed: 0,
+        startTime: Date.now(),
+        interval: null,
+        paused: false
+    };
+
+    // Start the interval
+    activeMasteryTimers[id].interval = setInterval(() => {
+        if (!activeMasteryTimers[id].paused) {
+            activeMasteryTimers[id].elapsed++;
+            const display = document.getElementById(`timerDisplay-${id}`);
+            if (display) {
+                display.textContent = formatMasteryTimerDisplay(activeMasteryTimers[id].elapsed);
+            }
+        }
+    }, 1000);
+
+    // Re-render just this card to show controls
+    renderMastery();
+    showNotification(`Timer started for ${m.name}`, 'gold');
+};
+
+window.pauseMasteryTimer = (id) => {
+    const timer = activeMasteryTimers[id];
+    if (!timer) return;
+
+    timer.paused = !timer.paused;
+    
+    const card = document.querySelector(`.mastery-card-new[data-id="${id}"]`);
+    if (card) {
+        const pauseBtn = card.querySelector('.timer-btn.pause');
+        if (pauseBtn) {
+            pauseBtn.innerHTML = timer.paused ? '<i data-lucide="play"></i>' : '<i data-lucide="pause"></i>';
+            pauseBtn.title = timer.paused ? 'Resume' : 'Pause';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+        const timerEl = card.querySelector('.live-timer');
+        if (timerEl) {
+            timerEl.classList.toggle('paused', timer.paused);
+        }
+    }
+};
+
+window.stopMasteryTimer = (id) => {
+    const timer = activeMasteryTimers[id];
+    const m = AppState.mastery.find(x => x.id === id);
+    if (!timer || !m) return;
+
+    // Clear interval
+    if (timer.interval) clearInterval(timer.interval);
+
+    const elapsedSeconds = timer.elapsed;
+    const elapsedHours = elapsedSeconds / 3600;
+
+    // Only save if there's meaningful time
+    if (elapsedSeconds >= 60) { // At least 1 minute
+        m.currentHours = (m.currentHours || 0) + elapsedHours;
+        m.lastLog = new Date().toISOString();
+        
+        if (!m.logs) m.logs = [];
+        m.logs.push({
+            date: new Date().toISOString(),
+            amount: elapsedHours,
+            note: `Timer session: ${formatMasteryTimerDisplay(elapsedSeconds)}`
         });
 
-        grid.appendChild(el);
+        // XP reward
+        const xpEarned = Math.round(elapsedHours * 50); // 50 XP per hour
+        addXP(xpEarned);
+        logActivity('mastery', `Logged ${formatMasteryTimerDisplay(elapsedSeconds)} for ${m.name}`);
+
+        saveState();
+        showNotification(`Saved ${formatMasteryTimerDisplay(elapsedSeconds)} to ${m.name}! +${xpEarned} XP`, 'gold');
+    } else {
+        showNotification('Timer stopped (less than 1 minute, not saved)', 'normal');
+    }
+
+    // Clean up
+    delete activeMasteryTimers[id];
+    renderMastery();
+};
+
+window.adjustMasteryCounter = (id, delta) => {
+    if (!activeMasteryTimers[id]) {
+        activeMasteryTimers[id] = { reps: 0 };
+    }
+
+    activeMasteryTimers[id].reps = Math.max(0, (activeMasteryTimers[id].reps || 0) + delta);
+    
+    const display = document.getElementById(`counterDisplay-${id}`);
+    if (display) {
+        display.textContent = activeMasteryTimers[id].reps;
+        display.classList.add('bump');
+        setTimeout(() => display.classList.remove('bump'), 150);
+    }
+
+    // Re-render actions area to update buttons
+    renderMastery();
+};
+
+window.saveMasteryCounter = (id) => {
+    const counter = activeMasteryTimers[id];
+    const m = AppState.mastery.find(x => x.id === id);
+    if (!counter || !m || counter.reps <= 0) return;
+
+    const reps = counter.reps;
+    m.currentHours = (m.currentHours || 0) + reps;
+    m.lastLog = new Date().toISOString();
+    
+    if (!m.logs) m.logs = [];
+    m.logs.push({
+        date: new Date().toISOString(),
+        amount: reps,
+        note: `Counter: ${reps} reps`
     });
 
-    // Render completed mastery
-    completedMastery.forEach(m => {
-        if (!completedGrid) return;
-        const el = document.createElement('div');
-        el.className = 'mastery-card-enhanced completed';
-        el.style.setProperty('--card-color', m.color);
+    // XP reward
+    const xpEarned = Math.round(reps * 2); // 2 XP per rep
+    addXP(xpEarned);
+    logActivity('mastery', `Logged ${reps} reps for ${m.name}`);
 
-        const pct = 100;
-        const unitLabel = m.type === 'reps' ? 'Reps' : 'Hours';
+    saveState();
+    showNotification(`Saved ${reps} reps to ${m.name}! +${xpEarned} XP`, 'gold');
 
-        el.innerHTML = `
-            <div style="position:absolute; top:10px; right:10px; font-size:1.5rem;">🏆</div>
-            <div class="mastery-header">
-                <span class="mastery-title">${m.name}</span>
-                <span style="color:var(--gold-primary); font-weight:bold;">COMPLETE!</span>
-            </div>
-            <div class="mastery-stats">
-                <span>${parseFloat(m.currentHours).toFixed(1)} / ${m.goalHours} ${unitLabel}</span>
-            </div>
-            <div class="mastery-progress-bg">
-                <div class="mastery-progress-fill" style="width:${pct}%"></div>
-            </div>
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <button class="btn-sm btn-outline" style="flex:1; border-color:rgba(255,255,255,0.1);" onclick="deleteMastery(${m.id})">Archive</button>
-            </div>
-        `;
-        completedGrid.appendChild(el);
-    });
-}
+    // Clean up
+    delete activeMasteryTimers[id];
+    renderMastery();
+};
+
+window.resetMasteryCounter = (id) => {
+    if (activeMasteryTimers[id]) {
+        activeMasteryTimers[id].reps = 0;
+    }
+    
+    const display = document.getElementById(`counterDisplay-${id}`);
+    if (display) display.textContent = '0';
+    
+    const tracker = document.getElementById(`masteryTracker-${id}`);
+    if (tracker) {
+        const controlsDiv = tracker.querySelector('.counter-controls');
+        if (controlsDiv) {
+            controlsDiv.innerHTML = `<span class="counter-hint">Tap +/- to count</span>`;
+        }
+    }
+};
 
 window.editMastery = (id) => {
     const m = AppState.mastery.find(x => x.id === id);
     if (!m) return;
 
+    masteryWizardStep = 1;
     window.editingMasteryId = id;
 
     document.getElementById('masteryModalTitle').textContent = 'Edit Mastery Goal';
-    document.getElementById('masterySaveBtn').textContent = 'Update Mastery';
+    document.getElementById('masterySaveBtn').textContent = 'Update Goal';
     document.getElementById('masteryName').value = m.name;
 
     // Icon selection
     const iconGrid = document.getElementById('masteryIconGrid');
     if (iconGrid) {
-        iconGrid.querySelectorAll('.mastery-icon-option').forEach(o => o.classList.remove('active'));
+        iconGrid.querySelectorAll('.mastery-icon-btn').forEach(o => o.classList.remove('active'));
         const opt = iconGrid.querySelector(`[data-icon="${m.icon || '🧘'}"]`);
         if (opt) opt.classList.add('active');
         document.getElementById('masteryIcon').value = m.icon || '🧘';
     }
 
     // Goal type
+    document.querySelectorAll('.type-card').forEach(c => c.classList.remove('active'));
+    const typeCard = document.querySelector(`.type-card[data-type="${m.type}"]`);
+    if (typeCard) typeCard.classList.add('active');
     const typeRadio = document.querySelector(`input[name="masteryType"][value="${m.type}"]`);
-    if (typeRadio) {
-        typeRadio.checked = true;
-        toggleMasteryInput(m.type);
-    }
+    if (typeRadio) typeRadio.checked = true;
 
     // Goal value
-    const goalSelect = document.getElementById('masteryGoal');
+    document.querySelectorAll('.goal-preset').forEach(p => p.classList.remove('active'));
     const customGroup = document.getElementById('customHoursGroup');
-    const customInput = document.getElementById('customHours');
 
     if (['10', '100', '1000', '10000'].includes(String(m.goalHours))) {
-        goalSelect.value = String(m.goalHours);
+        const preset = document.querySelector(`.goal-preset[data-value="${m.goalHours}"]`);
+        if (preset) preset.classList.add('active');
+        document.getElementById('masteryGoal').value = String(m.goalHours);
         customGroup.style.display = 'none';
     } else {
-        goalSelect.value = 'custom';
+        const customPreset = document.querySelector('.goal-preset[data-value="custom"]');
+        if (customPreset) customPreset.classList.add('active');
+        document.getElementById('masteryGoal').value = 'custom';
+        document.getElementById('customHours').value = m.goalHours;
         customGroup.style.display = 'block';
-        customInput.value = m.goalHours;
     }
 
     // Color
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+    const colorBtn = document.querySelector(`.color-btn[data-color="${m.color}"]`);
+    if (colorBtn) colorBtn.classList.add('active');
     const colorRadio = document.querySelector(`input[name="masteryColor"][value="${m.color}"]`);
     if (colorRadio) colorRadio.checked = true;
 
+    updateWizardUI();
+    updateMasteryPreview();
     window.openModal('masteryModal');
 };
 
-window.updateMastery = (id) => {
-    // This is now handled by saveMastery but we keep it as a wrapper or redirect if needed
-    window.editingMasteryId = id;
-    saveMastery();
-};
-
 window.deleteMastery = (id) => {
-    showConfirmModal('Delete Mastery Goal', 'Delete this mastery goal? Progress will be lost.', () => {
+    showConfirmModal('Delete Mastery Goal', 'Delete this mastery goal permanently? All progress will be lost.', () => {
         AppState.mastery = AppState.mastery.filter(m => m.id !== id);
         saveState();
         renderMastery();
@@ -3872,7 +5850,6 @@ window.openMasteryLogModal = (id) => {
 
     const modalId = 'masteryLogModal';
     let modal = document.getElementById(modalId);
-    const unitLabel = m.type === 'reps' ? 'Reps' : 'Time';
 
     if (!modal) {
         modal = document.createElement('div');
@@ -3880,73 +5857,106 @@ window.openMasteryLogModal = (id) => {
         modal.className = 'modal';
         modal.style.zIndex = '2000';
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
+            <div class="modal-content mastery-log-modal">
                 <div class="modal-header">
-                    <h2>Log Mastery: <span id="masteryLogName"></span></h2>
-                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                    <h2>Log Progress</h2>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')"><i data-lucide="x"></i></button>
                 </div>
                 <div class="modal-body">
-                    <div class="form-group" id="masteryTimeInputGroup" style="display:none;">
-                        <label>Time Spent</label>
-                        <div style="display:flex; gap:10px; margin-bottom:10px;">
-                            <div style="flex:1;">
-                                <label style="font-size:0.8rem; color:var(--text-muted);">Hours</label>
+                    <div class="log-header">
+                        <span class="log-icon" id="logMasteryIcon">🧘</span>
+                        <div class="log-info">
+                            <h3 id="masteryLogName">Goal Name</h3>
+                            <p id="masteryLogProgress">0 / 10,000 hours</p>
+                        </div>
+                    </div>
+                    
+                    <div class="log-input-section" id="masteryTimeInputGroup">
+                        <label style="margin-bottom:10px; display:block; color:var(--text-muted); font-size:0.85rem;">How long did you practice?</label>
+                        <div class="time-input-grid">
+                            <div class="time-input-group">
+                                <label>Hours</label>
                                 <input type="number" id="masteryLogHours" class="input" value="0" min="0" step="1">
                             </div>
-                            <div style="flex:1;">
-                                <label style="font-size:0.8rem; color:var(--text-muted);">Minutes</label>
-                                <input type="number" id="masteryLogMinutes" class="input" value="0" min="0" max="59" step="1">
+                            <div class="time-input-group">
+                                <label>Minutes</label>
+                                <input type="number" id="masteryLogMinutes" class="input" value="30" min="0" max="59" step="1">
                             </div>
                         </div>
-                        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
-                            <button class="btn-sm btn-outline quick-add-btn" onclick="quickAddTime(5)">+5m</button>
-                            <button class="btn-sm btn-outline quick-add-btn" onclick="quickAddTime(15)">+15m</button>
-                            <button class="btn-sm btn-outline quick-add-btn" onclick="quickAddTime(30)">+30m</button>
-                            <button class="btn-sm btn-outline quick-add-btn" onclick="quickAddTime(60)">+1h</button>
+                        <div class="quick-time-btns">
+                            <button type="button" class="quick-time-btn" onclick="quickAddTime(5)">+5m</button>
+                            <button type="button" class="quick-time-btn" onclick="quickAddTime(15)">+15m</button>
+                            <button type="button" class="quick-time-btn" onclick="quickAddTime(30)">+30m</button>
+                            <button type="button" class="quick-time-btn" onclick="quickAddTime(60)">+1h</button>
+                            <button type="button" class="quick-time-btn" onclick="quickAddTime(120)">+2h</button>
                         </div>
                     </div>
-                    <div class="form-group" id="masteryRepsInputGroup" style="display:none;">
-                        <label>Reps/Count</label>
-                        <input type="number" id="masteryLogReps" class="input" value="1" step="1">
-                        <p style="font-size:0.7rem; color:#888; margin-top:5px;">Use negative numbers to subtract.</p>
+                    
+                    <div class="log-input-section reps-input-section" id="masteryRepsInputGroup" style="display:none;">
+                        <label style="margin-bottom:15px; display:block; color:var(--text-muted); font-size:0.85rem;">How many reps/count?</label>
+                        <div class="reps-counter">
+                            <button type="button" class="reps-btn" onclick="adjustLogReps(-10)">-10</button>
+                            <button type="button" class="reps-btn" onclick="adjustLogReps(-1)">-</button>
+                            <span class="reps-value" id="masteryLogRepsDisplay">1</span>
+                            <button type="button" class="reps-btn" onclick="adjustLogReps(1)">+</button>
+                            <button type="button" class="reps-btn" onclick="adjustLogReps(10)">+10</button>
+                        </div>
+                        <input type="hidden" id="masteryLogReps" value="1">
                     </div>
-                    <div class="form-group">
-                        <label>Notes (Optional)</label>
-                        <textarea id="masteryLogNotes" class="input" rows="3"></textarea>
+                    
+                    <div class="form-group" style="margin-top:20px;">
+                        <label style="color:var(--text-muted); font-size:0.85rem;">Notes (optional)</label>
+                        <textarea id="masteryLogNotes" class="input" rows="2" placeholder="What did you work on?"></textarea>
                     </div>
-                    <div class="form-actions">
-                        <button class="btn btn-gold" id="confirmMasteryLog">Log Session</button>
-                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" onclick="window.closeModal('${modalId}')">Cancel</button>
+                    <button class="btn btn-gold" id="confirmMasteryLog">
+                        <span>✓</span> Log Progress
+                    </button>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
     }
 
+    // Update modal content
     const nameEl = modal.querySelector('#masteryLogName');
+    const iconEl = modal.querySelector('#logMasteryIcon');
+    const progressEl = modal.querySelector('#masteryLogProgress');
+    
     if (nameEl) nameEl.textContent = m.name;
+    if (iconEl) iconEl.textContent = m.icon || '🧘';
+    
+    const unitLabel = m.type === 'reps' ? 'reps' : 'hours';
+    const current = m.type === 'reps' ? Math.round(m.currentHours) : m.currentHours.toFixed(1);
+    if (progressEl) progressEl.textContent = `${current} / ${m.goalHours.toLocaleString()} ${unitLabel}`;
 
     // Show correct input group
     const timeGroup = modal.querySelector('#masteryTimeInputGroup');
     const repsGroup = modal.querySelector('#masteryRepsInputGroup');
+    
     if (m.type === 'hours') {
         if (timeGroup) timeGroup.style.display = 'block';
         if (repsGroup) repsGroup.style.display = 'none';
         const hoursInput = modal.querySelector('#masteryLogHours');
         const minutesInput = modal.querySelector('#masteryLogMinutes');
         if (hoursInput) hoursInput.value = 0;
-        if (minutesInput) minutesInput.value = 0;
+        if (minutesInput) minutesInput.value = 30;
     } else {
         if (timeGroup) timeGroup.style.display = 'none';
         if (repsGroup) repsGroup.style.display = 'block';
         const repsInput = modal.querySelector('#masteryLogReps');
+        const repsDisplay = modal.querySelector('#masteryLogRepsDisplay');
         if (repsInput) repsInput.value = 1;
+        if (repsDisplay) repsDisplay.textContent = '1';
     }
 
     const notesEl = modal.querySelector('#masteryLogNotes');
     if (notesEl) notesEl.value = '';
 
-    // Re-bind click event to avoid multiple listeners
+    // Bind confirm button
     const confirmBtn = modal.querySelector('#confirmMasteryLog');
     if (confirmBtn) {
         confirmBtn.onclick = () => {
@@ -3956,21 +5966,35 @@ window.openMasteryLogModal = (id) => {
                 const minutesInput = document.getElementById('masteryLogMinutes');
                 const hours = hoursInput ? parseFloat(hoursInput.value) || 0 : 0;
                 const minutes = minutesInput ? parseFloat(minutesInput.value) || 0 : 0;
-                amount = hours + (minutes / 60); // Convert to hours
+                amount = hours + (minutes / 60);
             } else {
                 const repsInput = document.getElementById('masteryLogReps');
                 amount = repsInput ? parseFloat(repsInput.value) || 0 : 0;
             }
 
             if (amount !== 0) {
-                logMasterySession(id, amount);
+                const notes = document.getElementById('masteryLogNotes')?.value || '';
+                logMasterySession(id, amount, notes);
                 window.closeModal(modalId);
+            } else {
+                showNotification('Please enter a value to log', 'error');
             }
         };
     }
 
     modal.style.display = 'flex';
     setTimeout(() => modal.classList.add('active'), 10);
+};
+
+window.adjustLogReps = (delta) => {
+    const input = document.getElementById('masteryLogReps');
+    const display = document.getElementById('masteryLogRepsDisplay');
+    if (!input || !display) return;
+    
+    let value = parseInt(input.value) || 0;
+    value = Math.max(0, value + delta);
+    input.value = value;
+    display.textContent = value;
 };
 
 window.quickAddTime = (minutes) => {
@@ -3988,25 +6012,59 @@ window.quickAddTime = (minutes) => {
     minutesInput.value = mins;
 };
 
-window.logMasterySession = (id, amount) => {
+window.logMasterySession = (id, amount, notes = '') => {
     const m = AppState.mastery.find(x => x.id === id);
     if (m) {
+        const now = new Date().toISOString();
+        
+        // Update progress
         m.currentHours += amount;
-        m.lastLog = new Date().toISOString();
+        m.lastLog = now;
+        
+        // Initialize logs array if needed
+        if (!m.logs) m.logs = [];
+        
+        // Add log entry
+        m.logs.push({
+            date: now,
+            amount: amount,
+            notes: notes
+        });
+        
+        // Check for milestone achievements
+        const pct = (m.currentHours / m.goalHours) * 100;
+        const milestones = [25, 50, 75, 100];
+        const previousPct = ((m.currentHours - amount) / m.goalHours) * 100;
+        
+        for (const ms of milestones) {
+            if (previousPct < ms && pct >= ms) {
+                if (ms === 100) {
+                    showNotification(`🏆 MASTERY ACHIEVED! You've completed ${m.name}!`, 'gold');
+                } else {
+                    showNotification(`🎉 ${ms}% milestone reached for ${m.name}!`, 'gold');
+                }
+            }
+        }
+        
         saveState();
         renderMastery();
+        updateMasteryOverview();
 
+        // Calculate XP
         let xp = 0;
         if (m.type === 'reps') {
             xp = Math.round(Math.abs(amount) * 0.5);
         } else {
-            xp = Math.round(amount * 60);
+            xp = Math.round(amount * 60); // 1 XP per minute
         }
 
         if (xp > 0) {
             addXP(xp);
-            logActivity('working', `Mastery: ${m.name} (+${amount.toFixed(1)} ${m.type === 'reps' ? 'reps' : 'hrs'})`, xp);
-            showNotification(`Progress logged! +${xp} XP`, 'gold');
+            const amountStr = m.type === 'reps' 
+                ? `+${Math.round(amount)} reps` 
+                : `+${amount.toFixed(1)} hrs`;
+            logActivity('mastery', `${m.name} ${amountStr}`, xp);
+            showNotification(`Progress logged! +${xp} XP ⚡`, 'gold');
         } else {
             showNotification(`Progress updated`, 'normal');
         }
@@ -4229,7 +6287,7 @@ window.quickScheduleFlow = () => {
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>Schedule Flow</h2>
-                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')"><i data-lucide="x"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -4582,7 +6640,7 @@ window.openExportFlowModal = () => {
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>Export Flows</h2>
-                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')"><i data-lucide="x"></i></button>
                 </div>
                 <div class="modal-body">
                     <p style="margin-bottom:15px;">Select flows to export:</p>
@@ -4735,7 +6793,7 @@ function showImportPreview(data) {
             <div class="modal-content">
                 <div class="modal-header">
                     <h2>Import Backup</h2>
-                    <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                    <button class="modal-close" onclick="window.closeModal('${modalId}')"><i data-lucide="x"></i></button>
                 </div>
                 <div class="modal-body">
                     <p style="margin-bottom:15px;">This file contains the following data:</p>
@@ -4974,7 +7032,7 @@ window.openExportPDFModal = (type) => {
     let modal = document.getElementById(modalId);
 
     const title = type === 'journal' ? 'Export Journal' : 'Export Calendar';
-    const icon = type === 'journal' ? '📓' : '📅';
+    const iconName = type === 'journal' ? 'book-open' : 'calendar';
 
     if (!modal) {
         modal = document.createElement('div');
@@ -4987,8 +7045,8 @@ window.openExportPDFModal = (type) => {
         <div class="modal-overlay" onclick="window.closeModal('${modalId}')"></div>
         <div class="modal-content">
             <div class="modal-header">
-                <h2>${icon} ${title}</h2>
-                <button class="modal-close" onclick="window.closeModal('${modalId}')">&times;</button>
+                <h2><i data-lucide="${iconName}"></i> ${title}</h2>
+                <button class="modal-close" onclick="window.closeModal('${modalId}')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <p style="margin-bottom:20px;">Select date range for export:</p>

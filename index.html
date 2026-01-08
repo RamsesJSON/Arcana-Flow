@@ -9,6 +9,8 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Raleway:wght@300;400;500;600&display=swap"
         rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="config.js"></script>
 </head>
 
@@ -16,7 +18,7 @@
     <!-- Mobile Header -->
     <header class="mobile-header">
         <div class="logo">
-            <span class="logo-icon">☽</span>
+            <span class="logo-icon"><i data-lucide="moon" class="lucide-icon"></i></span>
             <span class="logo-text">Arcana Flow</span>
         </div>
         <button class="sidebar-toggle" id="sidebarToggle">
@@ -34,10 +36,10 @@
 
     <!-- Sidebar Navigation -->
     <nav class="sidebar" id="sidebar">
-        <button class="sidebar-close-btn">×</button>
+        <button class="sidebar-close-btn"><i data-lucide="x" class="lucide-icon"></i></button>
         <div class="sidebar-header">
             <div class="logo">
-                <span class="logo-icon">☽</span>
+                <span class="logo-icon"><i data-lucide="moon" class="lucide-icon"></i></span>
                 <span class="logo-text">Arcana Flow</span>
             </div>
 
@@ -64,15 +66,15 @@
             <div class="nav-section">
                 <span class="nav-label">Main</span>
                 <a href="#" class="nav-item active" data-page="dashboard">
-                    <span class="nav-icon">◈</span>
+                    <span class="nav-icon"><i data-lucide="layout-dashboard"></i></span>
                     <span class="nav-text">Dashboard</span>
                 </a>
                 <a href="#" class="nav-item" data-page="flows">
-                    <span class="nav-icon">⟁</span>
+                    <span class="nav-icon"><i data-lucide="workflow"></i></span>
                     <span class="nav-text">Flows</span>
                 </a>
                 <a href="#" class="nav-item" data-page="magick">
-                    <span class="nav-icon">✧</span>
+                    <span class="nav-icon"><i data-lucide="sparkles"></i></span>
                     <span class="nav-text">Magick Workings</span>
                 </a>
             </div>
@@ -80,15 +82,19 @@
             <div class="nav-section">
                 <span class="nav-label">Productivity</span>
                 <a href="#" class="nav-item" data-page="todos">
-                    <span class="nav-icon">☐</span>
+                    <span class="nav-icon"><i data-lucide="check-square"></i></span>
                     <span class="nav-text">Tasks</span>
                 </a>
+                <a href="#" class="nav-item" data-page="weekly-schedule">
+                    <span class="nav-icon"><i data-lucide="calendar-days"></i></span>
+                    <span class="nav-text">Weekly Schedule</span>
+                </a>
                 <a href="#" class="nav-item" data-page="pomodoro">
-                    <span class="nav-icon">◉</span>
+                    <span class="nav-icon"><i data-lucide="timer"></i></span>
                     <span class="nav-text">Pomodoro</span>
                 </a>
                 <a href="#" class="nav-item" data-page="mastery">
-                    <span class="nav-icon">⚝</span>
+                    <span class="nav-icon"><i data-lucide="trophy"></i></span>
                     <span class="nav-text">Mastery</span>
                 </a>
             </div>
@@ -96,15 +102,15 @@
             <div class="nav-section">
                 <span class="nav-label">Records</span>
                 <a href="#" class="nav-item" data-page="calendar">
-                    <span class="nav-icon">◇</span>
+                    <span class="nav-icon"><i data-lucide="calendar"></i></span>
                     <span class="nav-text">Calendar</span>
                 </a>
                 <a href="#" class="nav-item" data-page="journal">
-                    <span class="nav-icon">⎔</span>
+                    <span class="nav-icon"><i data-lucide="book-open"></i></span>
                     <span class="nav-text">Journal</span>
                 </a>
                 <a href="#" class="nav-item" data-page="stats">
-                    <span class="nav-icon">◬</span>
+                    <span class="nav-icon"><i data-lucide="bar-chart-3"></i></span>
                     <span class="nav-text">Statistics</span>
                 </a>
             </div>
@@ -139,115 +145,237 @@
     <!-- Main Content Area -->
     <main class="main-content" id="mainContent">
 
-        <!-- Dashboard Page -->
+        <!-- Dashboard Page - Redesigned -->
         <section class="page active" id="page-dashboard">
-            <header class="page-header">
-                <h1 class="page-title">Dashboard</h1>
-                <div class="header-actions">
-                    <span class="current-date" id="currentDate"></span>
-                    <button class="btn btn-gold" onclick="openQuickFlow()">
-                        <span>+ Quick Flow</span>
+            <div class="dashboard-wrapper">
+                <!-- Hero Welcome Section -->
+                <div class="dashboard-hero">
+                    <div class="hero-content">
+                        <div class="hero-greeting">
+                            <span class="greeting-time" id="greetingTime">Good Morning</span>
+                            <h1 class="hero-title">Welcome to <span class="hero-accent">Arcana Flow</span></h1>
+                            <p class="hero-subtitle" id="heroSubtitle">The stars align in your favor today</p>
+                        </div>
+                        <div class="hero-right">
+                            <div class="hero-date-widget">
+                                <span class="date-day" id="heroDay">08</span>
+                                <div class="date-meta">
+                                    <span class="date-weekday" id="heroWeekday">Wednesday</span>
+                                    <span class="date-month" id="heroMonth">January 2026</span>
+                                </div>
+                            </div>
+                            <div class="hero-stats-compact">
+                                <div class="hero-stat">
+                                    <i data-lucide="flame"></i>
+                                    <span class="hero-stat-value" id="currentStreak">0</span>
+                                    <span class="hero-stat-label">Streak</span>
+                                </div>
+                                <div class="hero-stat">
+                                    <i data-lucide="sparkles"></i>
+                                    <span class="hero-stat-value" id="todayCompleted">0</span>
+                                    <span class="hero-stat-label">Flows</span>
+                                </div>
+                                <div class="hero-stat">
+                                    <i data-lucide="clock"></i>
+                                    <span class="hero-stat-value" id="todayTime">0m</span>
+                                    <span class="hero-stat-label">Time</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-particles"></div>
+                </div>
+
+                <!-- Main Content - Two Column Layout -->
+                <div class="dashboard-content">
+                    <!-- Left Column - Main Content -->
+                    <div class="dashboard-main">
+                        <!-- Quick Actions Bar -->
+                        <div class="quick-actions-bar">
+                            <button class="qa-bar-btn" onclick="openQuickFlow()">
+                                <i data-lucide="plus"></i>
+                                <span>New Flow</span>
+                            </button>
+                            <button class="qa-bar-btn" onclick="navigateTo('pomodoro')">
+                                <i data-lucide="timer"></i>
+                                <span>Pomodoro</span>
+                            </button>
+                            <button class="qa-bar-btn" onclick="startBreathingExercise()">
+                                <i data-lucide="wind"></i>
+                                <span>Breathe</span>
+                            </button>
+                            <button class="qa-bar-btn" onclick="navigateTo('mastery')">
+                                <i data-lucide="trophy"></i>
+                                <span>Mastery</span>
+                            </button>
+                            <button class="qa-bar-btn" onclick="openQuickJournal()">
+                                <i data-lucide="book-open"></i>
+                                <span>Journal</span>
+                            </button>
+                        </div>
+
+                        <!-- Today's Schedule -->
+                        <div class="dash-card schedule-card">
+                            <div class="dash-card-header">
+                                <div class="header-left">
+                                    <span class="header-icon"><i data-lucide="calendar"></i></span>
+                                    <h2>Today's Schedule</h2>
+                                </div>
+                                <span class="schedule-count" id="todayCount">0 items</span>
+                            </div>
+                            <div class="dash-card-body">
+                                <div class="schedule-timeline" id="todaySchedule">
+                                    <div class="empty-state-mini">
+                                        <i data-lucide="sunrise"></i>
+                                        <p>No flows scheduled for today</p>
+                                        <button class="btn-mini" onclick="navigateTo('flows')">
+                                            <i data-lucide="plus"></i> Create Flow
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Two Column Sub-Grid -->
+                        <div class="dashboard-sub-grid">
+                            <!-- Priority Tasks -->
+                            <div class="dash-card tasks-card">
+                                <div class="dash-card-header">
+                                    <div class="header-left">
+                                        <span class="header-icon"><i data-lucide="check-square"></i></span>
+                                        <h2>Priority Tasks</h2>
+                                    </div>
+                                    <button class="btn-text" onclick="navigateTo('todos')">
+                                        View All <i data-lucide="chevron-right"></i>
+                                    </button>
+                                </div>
+                                <div class="dash-card-body">
+                                    <div class="priority-tasks-list" id="dashboardTasks">
+                                        <div class="empty-state-mini">
+                                            <i data-lucide="inbox"></i>
+                                            <p>No priority tasks</p>
+                                            <button class="btn-mini" onclick="navigateTo('todos')">
+                                                <i data-lucide="plus"></i> Add Task
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Active Workings -->
+                            <div class="dash-card workings-card">
+                                <div class="dash-card-header">
+                                    <div class="header-left">
+                                        <span class="header-icon"><i data-lucide="wand-2"></i></span>
+                                        <h2>Active Workings</h2>
+                                    </div>
+                                    <button class="btn-text" onclick="navigateTo('magick')">
+                                        View All <i data-lucide="chevron-right"></i>
+                                    </button>
+                                </div>
+                                <div class="dash-card-body">
+                                    <div class="active-workings-list" id="activeWorkingsList">
+                                        <div class="empty-state-mini">
+                                            <i data-lucide="sparkles"></i>
+                                            <p>No active workings</p>
+                                            <button class="btn-mini" onclick="navigateTo('magick')">
+                                                <i data-lucide="plus"></i> Start Working
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Sidebar -->
+                    <div class="dashboard-sidebar">
+                        <!-- Focus Timer Widget -->
+                        <div class="dash-card focus-card">
+                            <div class="focus-header">
+                                <span class="focus-label">Quick Focus</span>
+                                <div class="focus-presets">
+                                    <button class="focus-preset active" data-minutes="15">15m</button>
+                                    <button class="focus-preset" data-minutes="25">25m</button>
+                                    <button class="focus-preset" data-minutes="45">45m</button>
+                                </div>
+                            </div>
+                            <div class="focus-display">
+                                <div class="focus-ring">
+                                    <svg viewBox="0 0 120 120">
+                                        <circle class="focus-ring-bg" cx="60" cy="60" r="54" />
+                                        <circle class="focus-ring-progress" cx="60" cy="60" r="54" id="focusRingProgress" />
+                                    </svg>
+                                    <div class="focus-time">
+                                        <span class="focus-minutes" id="focusMinutes">15</span>
+                                        <span class="focus-label-sm">minutes</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-focus-start" id="startFocusBtn" onclick="startDashboardFocus()">
+                                <i data-lucide="play"></i>
+                                <span>Start Focus</span>
+                            </button>
+                        </div>
+
+                        <!-- Progress & XP -->
+                        <div class="dash-card progress-card">
+                            <div class="progress-header">
+                                <span class="progress-level">Level <span id="dashLevel">1</span></span>
+                                <span class="progress-title" id="dashLevelTitle">Neophyte</span>
+                            </div>
+                            <div class="progress-xp-bar">
+                                <div class="progress-xp-fill" id="dashXPBar" style="width: 0%"></div>
+                            </div>
+                            <span class="progress-xp-text"><span id="dashCurrentXP">0</span> / <span id="dashNextLevelXP">100</span> XP</span>
+                            
+                            <div class="progress-stats">
+                                <div class="progress-stat">
+                                    <span class="progress-stat-value" id="activeWorkings">0</span>
+                                    <span class="progress-stat-label">Active Workings</span>
+                                </div>
+                                <div class="progress-stat">
+                                    <span class="progress-stat-value" id="todayPomodoros">0</span>
+                                    <span class="progress-stat-label">Pomodoros Today</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recent Activity -->
+                        <div class="dash-card activity-card">
+                            <div class="dash-card-header compact">
+                                <div class="header-left">
+                                    <span class="header-icon"><i data-lucide="activity"></i></span>
+                                    <h2>Activity</h2>
+                                </div>
+                            </div>
+                            <div class="dash-card-body">
+                                <div class="activity-feed" id="dashboardActivity">
+                                    <div class="empty-state-mini">
+                                        <i data-lucide="clock"></i>
+                                        <p>No recent activity</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cosmic Insight Banner -->
+                <div class="cosmic-insight-banner">
+                    <div class="insight-glow"></div>
+                    <div class="insight-content">
+                        <div class="insight-icon">
+                            <i data-lucide="sparkles"></i>
+                        </div>
+                        <div class="insight-text">
+                            <span class="insight-label">Cosmic Insight</span>
+                            <p class="insight-message" id="cosmicInsight">The Moon waxes in a favorable sign. A good time for new beginnings and setting intentions.</p>
+                        </div>
+                    </div>
+                    <button class="insight-refresh" onclick="refreshCosmicInsight()" title="New Insight">
+                        <i data-lucide="refresh-cw"></i>
                     </button>
-                </div>
-            </header>
-
-            <!-- Stats Overview -->
-            <div class="stats-grid">
-                <div class="stat-card streak-card">
-                    <div class="streak-flame-container">
-                        <div class="streak-flame" id="streakFlame"></div>
-                    </div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="currentStreak">0</span>
-                        <span class="stat-label">Day Streak</span>
-                    </div>
-                    <div class="stat-glow"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">✧</div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="todayCompleted">0</span>
-                        <span class="stat-label">Today's Flows</span>
-                    </div>
-                    <div class="stat-glow"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⏱</div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="todayTime">0m</span>
-                        <span class="stat-label">Practice Time</span>
-                    </div>
-                    <div class="stat-glow"></div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-icon">⚝</div>
-                    <div class="stat-content">
-                        <span class="stat-value" id="activeWorkings">0</span>
-                        <span class="stat-label">Active Workings</span>
-                    </div>
-                    <div class="stat-glow"></div>
-                </div>
-            </div>
-
-            <!-- Today's Schedule -->
-            <div class="dashboard-grid">
-                <div class="card today-schedule">
-                    <div class="card-header">
-                        <h2>Today's Schedule</h2>
-                        <span class="badge" id="todayCount">0 items</span>
-                    </div>
-                    <div class="card-content">
-                        <div class="schedule-list" id="todaySchedule">
-                            <div class="empty-state">
-                                <span class="empty-icon">☽</span>
-                                <p>No flows scheduled for today</p>
-                                <button class="btn btn-outline" onclick="navigateTo('flows')">Create a Flow</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card active-workings">
-                    <div class="card-header">
-                        <h2>Active Magick Workings</h2>
-                        <button class="btn btn-sm btn-outline" onclick="navigateTo('magick')">View All</button>
-                    </div>
-                    <div class="card-content">
-                        <div class="workings-list" id="activeWorkingsList">
-                            <div class="empty-state">
-                                <span class="empty-icon">✧</span>
-                                <p>No active workings</p>
-                                <button class="btn btn-outline" onclick="navigateTo('magick')">Start Working</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div class="card quick-actions">
-                <div class="card-header">
-                    <h2>Quick Actions</h2>
-                </div>
-                <div class="card-content">
-                    <div class="quick-actions-grid">
-                        <button class="quick-action" onclick="startQuickTimer()">
-                            <span class="qa-icon">⏱</span>
-                            <span class="qa-text">Quick Timer</span>
-                        </button>
-                        <button class="quick-action" onclick="startBreathingExercise()">
-                            <span class="qa-icon">🌬</span>
-                            <span class="qa-text">Breathing</span>
-                        </button>
-                        <button class="quick-action" onclick="navigateTo('pomodoro')">
-                            <span class="qa-icon">🍅</span>
-                            <span class="qa-text">Pomodoro</span>
-                        </button>
-                        <button class="quick-action" onclick="openQuickJournal()">
-                            <span class="qa-icon">📝</span>
-                            <span class="qa-text">Journal Entry</span>
-                        </button>
-                    </div>
                 </div>
             </div>
         </section>
@@ -258,13 +386,13 @@
                 <h1 class="page-title">Flows</h1>
                 <div class="header-actions">
                     <button id="importFlowBtn" class="btn btn-outline" onclick="window.triggerFlowImport()">
-                        <span>Import Flow</span>
+                        <span><i data-lucide="upload"></i> Import Flow</span>
                     </button>
                     <button class="btn btn-outline" onclick="openExportFlowModal()">
-                        <span>Export Flows</span>
+                        <span><i data-lucide="download"></i> Export Flows</span>
                     </button>
                     <button class="btn btn-gold" onclick="openFlowBuilder()">
-                        <span>+ Create Flow</span>
+                        <span><i data-lucide="plus"></i> Create Flow</span>
                     </button>
                 </div>
             </header>
@@ -279,7 +407,7 @@
                     <!-- Flows will be populated here -->
                 </div>
                 <div class="empty-state" id="noFlows">
-                    <span class="empty-icon">⟁</span>
+                    <span class="empty-icon"><i data-lucide="workflow"></i></span>
                     <h3>No flows created yet</h3>
                     <p>Create your first flow to begin your practice</p>
                     <button class="btn btn-gold" onclick="openFlowBuilder()">Create Flow</button>
@@ -293,92 +421,201 @@
             </div>
         </section>
 
-        <!-- Magick Workings Page -->
+        <!-- Magick Workings Page - Redesigned -->
         <section class="page" id="page-magick">
-            <header class="page-header">
-                <h1 class="page-title">Magick Workings</h1>
-                <div class="header-actions">
-                    <button class="btn btn-gold" onclick="openWorkingBuilder()">
-                        <span>+ New Working</span>
+            <div class="workings-page-wrapper">
+                <!-- Header -->
+                <header class="workings-header">
+                    <div class="workings-header-left">
+                        <h1 class="workings-title">
+                            <span class="title-icon"><i data-lucide="sparkles"></i></span>
+                            Magick Workings
+                        </h1>
+                        <p class="workings-subtitle">Track your manifestations and spiritual practices</p>
+                    </div>
+                    <button class="btn-new-working" onclick="openWorkingBuilder()">
+                        <span class="btn-icon"><i data-lucide="plus"></i></span>
+                        <span class="btn-text">New Working</span>
+                    </button>
+                </header>
+
+                <!-- Stats Overview -->
+                <div class="workings-stats-row">
+                    <div class="working-stat-card">
+                        <span class="stat-icon"><i data-lucide="wand-2"></i></span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="workingsActiveCount">0</span>
+                            <span class="stat-label">Active</span>
+                        </div>
+                    </div>
+                    <div class="working-stat-card">
+                        <span class="stat-icon"><i data-lucide="clipboard-list"></i></span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="workingsPlannedCount">0</span>
+                            <span class="stat-label">Planned</span>
+                        </div>
+                    </div>
+                    <div class="working-stat-card">
+                        <span class="stat-icon"><i data-lucide="trophy"></i></span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="workingsCompletedCount">0</span>
+                            <span class="stat-label">Completed</span>
+                        </div>
+                    </div>
+                    <div class="working-stat-card highlight">
+                        <span class="stat-icon"><i data-lucide="flame"></i></span>
+                        <div class="stat-info">
+                            <span class="stat-value" id="workingsStreak">0</span>
+                            <span class="stat-label">Day Streak</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="workings-tabs-new">
+                    <button class="working-tab active" data-tab="active">
+                        <span class="tab-icon"><i data-lucide="zap"></i></span>
+                        <span class="tab-label">Active</span>
+                        <span class="tab-count" id="tabActiveCount">0</span>
+                    </button>
+                    <button class="working-tab" data-tab="planned">
+                        <span class="tab-icon"><i data-lucide="file-text"></i></span>
+                        <span class="tab-label">Planned</span>
+                        <span class="tab-count" id="tabPlannedCount">0</span>
+                    </button>
+                    <button class="working-tab" data-tab="completed">
+                        <span class="tab-icon"><i data-lucide="check"></i></span>
+                        <span class="tab-label">Completed</span>
+                        <span class="tab-count" id="tabCompletedCount">0</span>
                     </button>
                 </div>
-            </header>
 
-            <div class="workings-tabs">
-                <button class="tab-btn active" data-tab="active">Active</button>
-                <button class="tab-btn" data-tab="planned">Planned</button>
-                <button class="tab-btn" data-tab="completed">Completed</button>
-            </div>
+                <!-- Workings Grid -->
+                <div class="workings-grid-new" id="workingsGrid">
+                    <!-- Workings will be populated here -->
+                </div>
 
-            <div class="workings-grid" id="workingsGrid">
-                <!-- Workings will be populated here -->
-            </div>
-
-            <div class="empty-state" id="noWorkings">
-                <span class="empty-icon">✧</span>
-                <h3>No magick workings yet</h3>
-                <p>Start a new working to track your manifestations</p>
-                <button class="btn btn-gold" onclick="openWorkingBuilder()">Start Working</button>
+                <!-- Empty State -->
+                <div class="workings-empty-state" id="noWorkings">
+                    <div class="empty-sigil"><i data-lucide="sparkles"></i></div>
+                    <h3>No Active Workings</h3>
+                    <p>Begin your magical journey by creating a new working</p>
+                    <button class="btn-new-working" onclick="openWorkingBuilder()">
+                        <span class="btn-icon"><i data-lucide="plus"></i></span>
+                        <span>Create Working</span>
+                    </button>
+                </div>
             </div>
         </section>
 
-        <!-- Tasks Page -->
+        <!-- Tasks Page - Redesigned -->
         <section class="page" id="page-todos">
-            <header class="page-header">
-                <h1 class="page-title">Tasks</h1>
-                <div class="header-actions">
-                    <button class="btn btn-gold" onclick="openTaskModal()">
-                        <span>+ Add Task</span>
+            <div class="tasks-page-wrapper">
+                <!-- Tasks Header -->
+                <header class="tasks-header">
+                    <div class="tasks-header-left">
+                        <h1 class="tasks-title">
+                            <span class="title-icon"><i data-lucide="clipboard-list"></i></span>
+                            Tasks
+                        </h1>
+                        <div class="tasks-quick-stats">
+                            <span class="quick-stat" id="tasksQuickTotal">
+                                <span class="stat-num">0</span> total
+                            </span>
+                            <span class="quick-stat-divider">•</span>
+                            <span class="quick-stat done-stat" id="tasksQuickDone">
+                                <span class="stat-num">0</span> done today
+                            </span>
+                        </div>
+                    </div>
+                    <button class="btn-add-task" onclick="openTaskModal()">
+                        <span class="btn-icon"><i data-lucide="plus"></i></span>
+                        <span class="btn-text">Add Task</span>
                     </button>
-                </div>
-            </header>
+                </header>
 
-            <!-- Task Filters -->
-            <div class="task-filters" style="display: flex; gap: 15px; margin-bottom: 20px; flex-wrap: wrap;">
-                <input type="text" id="taskSearch" class="input" placeholder="Search tasks..."
-                    style="flex: 1; min-width: 200px;" oninput="renderTasks()">
-                <select id="taskCategoryFilter" class="input" style="width: 150px;" onchange="renderTasks()">
-                    <option value="">All Categories</option>
-                    <option value="Work">Work</option>
-                    <option value="Personal">Personal</option>
-                    <option value="Health">Health</option>
-                    <option value="Study">Study</option>
-                    <option value="Magick">Magick</option>
-                </select>
-                <select id="taskPriorityFilter" class="input" style="width: 130px;" onchange="renderTasks()">
-                    <option value="">All Priorities</option>
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                </select>
-            </div>
+                <!-- Search & Filters Bar -->
+                <div class="tasks-toolbar">
+                    <div class="tasks-search">
+                        <span class="search-icon"><i data-lucide="search"></i></span>
+                        <input type="text" id="taskSearch" placeholder="Search tasks..." oninput="renderTasks()">
+                    </div>
+                    <div class="tasks-filters">
+                        <div class="filter-group">
+                            <select id="taskCategoryFilter" class="filter-select" onchange="renderTasks()">
+                                <option value="">All Categories</option>
+                                <option value="work">Work</option>
+                                <option value="personal">Personal</option>
+                                <option value="health">Health</option>
+                                <option value="study">Study</option>
+                                <option value="spiritual">Spiritual</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <select id="taskPriorityFilter" class="filter-select" onchange="renderTasks()">
+                                <option value="">All Priorities</option>
+                                <option value="high">High</option>
+                                <option value="medium">Medium</option>
+                                <option value="low">Low</option>
+                            </select>
+                        </div>
+                        <button class="filter-clear-btn" onclick="clearTaskFilters()" title="Clear filters">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                </div>
 
-            <div class="tasks-view">
-                <div class="tasks-column">
-                    <div class="column-header">
-                        <span class="column-title">To Do</span>
-                        <span class="column-count" id="todoCount">0</span>
+                <!-- Kanban Board -->
+                <div class="tasks-board">
+                    <!-- To Do Column -->
+                    <div class="tasks-column" data-status="todo">
+                        <div class="column-header todo-header">
+                            <div class="column-header-left">
+                                <span class="column-icon"><i data-lucide="file-text"></i></span>
+                                <span class="column-title">To Do</span>
+                            </div>
+                            <span class="column-count" id="todoCount">0</span>
+                        </div>
+                        <div class="tasks-list" id="todoList" data-status="todo">
+                            <!-- Tasks populated here -->
+                        </div>
+                        <button class="add-task-inline" onclick="openTaskModal('todo')">
+                            <span><i data-lucide="plus"></i> Add task</span>
+                        </button>
                     </div>
-                    <div class="tasks-list" id="todoList" data-status="todo">
-                        <!-- Tasks populated here -->
+
+                    <!-- In Progress Column -->
+                    <div class="tasks-column" data-status="progress">
+                        <div class="column-header progress-header">
+                            <div class="column-header-left">
+                                <span class="column-icon"><i data-lucide="zap"></i></span>
+                                <span class="column-title">In Progress</span>
+                            </div>
+                            <span class="column-count" id="progressCount">0</span>
+                        </div>
+                        <div class="tasks-list" id="progressList" data-status="progress">
+                            <!-- Tasks populated here -->
+                        </div>
+                        <button class="add-task-inline" onclick="openTaskModal('progress')">
+                            <span><i data-lucide="plus"></i> Add task</span>
+                        </button>
                     </div>
-                </div>
-                <div class="tasks-column">
-                    <div class="column-header">
-                        <span class="column-title">In Progress</span>
-                        <span class="column-count" id="progressCount">0</span>
-                    </div>
-                    <div class="tasks-list" id="progressList" data-status="progress">
-                        <!-- Tasks populated here -->
-                    </div>
-                </div>
-                <div class="tasks-column">
-                    <div class="column-header">
-                        <span class="column-title">Done</span>
-                        <span class="column-count" id="doneCount">0</span>
-                    </div>
-                    <div class="tasks-list" id="doneList" data-status="done">
-                        <!-- Tasks populated here -->
+
+                    <!-- Done Column -->
+                    <div class="tasks-column" data-status="done">
+                        <div class="column-header done-header">
+                            <div class="column-header-left">
+                                <span class="column-icon"><i data-lucide="check-circle"></i></span>
+                                <span class="column-title">Done</span>
+                            </div>
+                            <span class="column-count" id="doneCount">0</span>
+                        </div>
+                        <div class="tasks-list" id="doneList" data-status="done">
+                            <!-- Tasks populated here -->
+                        </div>
+                        <button class="clear-done-btn" onclick="clearDoneTasks()" id="clearDoneBtn" style="display:none;">
+                            <i data-lucide="trash-2"></i> Clear completed
+                        </button>
                     </div>
                 </div>
             </div>
@@ -386,147 +623,404 @@
 
         <!-- Pomodoro Page -->
         <section class="page" id="page-pomodoro">
-            <header class="page-header">
-                <h1 class="page-title">Pomodoro Timer</h1>
-            </header>
-
-            <div class="pomodoro-container">
-                <div class="pomodoro-card">
-                    <div class="pomodoro-mode">
-                        <button class="mode-btn active" data-mode="work">Work</button>
-                        <button class="mode-btn" data-mode="short">Short Break</button>
-                        <button class="mode-btn" data-mode="long">Long Break</button>
+            <div class="pomo-page-wrapper">
+                <!-- Main Timer Area -->
+                <div class="pomo-main">
+                    <div class="pomo-ambient-bg" id="pomoAmbient"></div>
+                    
+                    <!-- Mode Tabs -->
+                    <div class="pomo-mode-tabs">
+                        <button class="pomo-tab active" data-mode="work">
+                            <span class="tab-icon"><i data-lucide="target"></i></span>
+                            <span class="tab-label">Focus</span>
+                        </button>
+                        <button class="pomo-tab" data-mode="short">
+                            <span class="tab-icon"><i data-lucide="coffee"></i></span>
+                            <span class="tab-label">Short Break</span>
+                        </button>
+                        <button class="pomo-tab" data-mode="long">
+                            <span class="tab-icon"><i data-lucide="leaf"></i></span>
+                            <span class="tab-label">Long Break</span>
+                        </button>
                     </div>
 
-                    <!-- Pomodoro V2: Focus Panel -->
-                    <div class="pomodoro-focus-panel">
-                        <div class="pomo-background-glow" id="pomoGlow"></div>
-
-                        <div class="pomo-mode-badge" id="pomoModeBadge">Ready to Focus</div>
-
-                        <div class="pomo-timer-container">
-                            <svg class="pomo-timer-ring" viewBox="0 0 240 240">
-                                <circle class="ring-bg" cx="120" cy="120" r="110" />
-                                <circle class="ring-fill" cx="120" cy="120" r="110" id="pomodoroRing" />
+                    <!-- Timer Circle -->
+                    <div class="pomo-timer-wrapper">
+                        <div class="pomo-ring-container">
+                            <svg class="pomo-ring-svg" viewBox="0 0 280 280" style="overflow: visible;">
+                                <defs>
+                                    <linearGradient id="pomoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:var(--pomo-color-start, #d4af37)"/>
+                                        <stop offset="100%" style="stop-color:var(--pomo-color-end, #f5d77a)"/>
+                                    </linearGradient>
+                                </defs>
+                                <circle class="pomo-ring-track" cx="140" cy="140" r="130"/>
+                                <circle class="pomo-ring-progress" cx="140" cy="140" r="130" id="pomoRingProgress"/>
                             </svg>
-                            <div class="pomo-timer-display-v2" id="timerDisplay">25:00</div>
-                        </div>
-
-                        <div class="pomo-linked-goal" id="pomoLinkedGoalDisplay" style="display:none;">
-                            <div class="goal-dot" id="pomoGoalDot"></div>
-                            <span id="pomoLinkedGoalName">Linked Goal</span>
-                        </div>
-
-                        <div class="pomo-controls-v2">
-                            <button class="btn-pomo-main" onclick="resetPomodoro()" title="Reset">
-                                <span>🔄</span>
-                            </button>
-                            <button class="btn-pomo-main primary" id="pomoToggleBtn" onclick="togglePomodoro()">
-                                <span>▶️</span>
-                            </button>
-                            <button class="btn-pomo-main" onclick="openModal('pomoSettingsModal')" title="Settings">
-                                <span>⚙️</span>
-                            </button>
-                        </div>
-
-                        <div class="pomo-session-stats">
-                            <div class="pomo-stat-item">
-                                <span class="pomo-stat-val" id="pomsDoneToday">0</span>
-                                <span class="pomo-stat-lbl">Sessions</span>
-                            </div>
-                            <div class="pomo-stat-item">
-                                <span class="pomo-stat-val" id="totalPoms">0</span>
-                                <span class="pomo-stat-lbl">Total Units</span>
+                            <div class="pomo-timer-inner">
+                                <div class="pomo-status" id="pomoStatus">Ready to Focus</div>
+                                <div class="pomo-time" id="pomoTimeDisplay">25:00</div>
+                                <div class="pomo-session-label" id="pomoSessionLabel">Session 1 of 4</div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Pomodoro Settings Modal -->
-                    <div class="modal" id="pomoSettingsModal">
-                        <div class="modal-overlay" onclick="closeModal('pomoSettingsModal')"></div>
-                        <div class="modal-content">
-                            <div class="modal-header">
-                                <h2>Focus Settings</h2>
-                                <button class="modal-close" onclick="closeModal('pomoSettingsModal')">×</button>
-                            </div>
-                            <div class="modal-body">
-                                <div class="setting-row-premium">
-                                    <div class="setting-label-group">
-                                        <label>Work Duration</label>
-                                        <span class="setting-value" id="workDurationVal">25</span>
-                                        <span class="setting-unit">min</span>
-                                    </div>
-                                    <input type="range" id="workDuration" value="25" min="1" max="120"
-                                        oninput="document.getElementById('workDurationVal').textContent = this.value">
-                                </div>
-                                <div class="setting-row-premium">
-                                    <div class="setting-label-group">
-                                        <label>Short Break</label>
-                                        <span class="setting-value" id="shortBreakVal">5</span>
-                                        <span class="setting-unit">min</span>
-                                    </div>
-                                    <input type="range" id="shortBreak" value="5" min="1" max="30"
-                                        oninput="document.getElementById('shortBreakVal').textContent = this.value">
-                                </div>
-                                <div class="setting-row-premium">
-                                    <div class="setting-label-group">
-                                        <label>Long Break</label>
-                                        <span class="setting-value" id="longBreakVal">15</span>
-                                        <span class="setting-unit">min</span>
-                                    </div>
-                                    <input type="range" id="longBreak" value="15" min="1" max="60"
-                                        oninput="document.getElementById('longBreakVal').textContent = this.value">
-                                </div>
+                    <!-- Controls -->
+                    <div class="pomo-controls">
+                        <button class="pomo-ctrl-btn" onclick="skipPomodoro()" title="Skip">
+                            <span><i data-lucide="skip-forward"></i></span>
+                        </button>
+                        <button class="pomo-ctrl-btn main-btn" id="pomoPlayBtn" onclick="togglePomodoro()">
+                            <span id="pomoPlayIcon"><i data-lucide="play"></i></span>
+                        </button>
+                        <button class="pomo-ctrl-btn" onclick="resetPomodoro()" title="Reset">
+                            <span><i data-lucide="rotate-ccw"></i></span>
+                        </button>
+                    </div>
 
-                                <div class="form-group" style="margin-top:20px;">
-                                    <label
-                                        style="display:block; margin-bottom:10px; color:var(--gold-primary); font-weight:600;">Link
-                                        to Mastery Goal</label>
-                                    <select id="pomoMasteryLink" class="input">
-                                        <option value="">None (General Focus)</option>
-                                    </select>
-                                    <p class="setting-hint">Sessions will automatically add progress to the selected
-                                        goal.</p>
+                    <!-- Linked Goal Pill -->
+                    <div class="pomo-linked-pill" id="pomoLinkedPill" style="display:none;">
+                        <span class="linked-dot" id="pomoLinkedDot"></span>
+                        <span id="pomoLinkedName">Linked Goal</span>
+                        <button class="linked-clear" onclick="clearPomoLink()" title="Unlink"><i data-lucide="x"></i></button>
+                    </div>
+                </div>
+
+                <!-- Side Panel -->
+                <div class="pomo-side-panel">
+                    <!-- Today's Progress -->
+                    <div class="pomo-panel-section">
+                        <h3 class="panel-title">Today's Progress</h3>
+                        <div class="pomo-today-stats">
+                            <div class="today-stat-card">
+                                <div class="stat-ring-mini">
+                                    <svg viewBox="0 0 40 40">
+                                        <circle cx="20" cy="20" r="16" class="stat-ring-bg"/>
+                                        <circle cx="20" cy="20" r="16" class="stat-ring-fill" id="todayProgressRing"/>
+                                    </svg>
+                                    <span class="stat-ring-val" id="todayPomos">0</span>
+                                </div>
+                                <div class="stat-info">
+                                    <span class="stat-label">Sessions</span>
+                                    <span class="stat-goal" id="todayGoalText">Goal: 4</span>
                                 </div>
                             </div>
-                            <div class="modal-footer">
-                                <button class="btn btn-gold" onclick="closeModal('pomoSettingsModal')">Save
-                                    Settings</button>
+                            <div class="today-stat-card">
+                                <div class="stat-icon"><i data-lucide="timer"></i></div>
+                                <div class="stat-info">
+                                    <span class="stat-value" id="todayMinutes">0</span>
+                                    <span class="stat-label">Minutes</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Settings -->
+                    <div class="pomo-panel-section">
+                        <h3 class="panel-title">Timer Settings</h3>
+                        <div class="pomo-quick-settings">
+                            <div class="quick-setting">
+                                <label>Focus</label>
+                                <div class="setting-adjuster">
+                                    <button onclick="adjustPomoSetting('work', -5)">−</button>
+                                    <span id="workDurationDisplay">25</span>
+                                    <button onclick="adjustPomoSetting('work', 5)">+</button>
+                                </div>
+                            </div>
+                            <div class="quick-setting">
+                                <label>Short Break</label>
+                                <div class="setting-adjuster">
+                                    <button onclick="adjustPomoSetting('short', -1)">−</button>
+                                    <span id="shortBreakDisplay">5</span>
+                                    <button onclick="adjustPomoSetting('short', 1)">+</button>
+                                </div>
+                            </div>
+                            <div class="quick-setting">
+                                <label>Long Break</label>
+                                <div class="setting-adjuster">
+                                    <button onclick="adjustPomoSetting('long', -5)">−</button>
+                                    <span id="longBreakDisplay">15</span>
+                                    <button onclick="adjustPomoSetting('long', 5)">+</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Link to Mastery -->
+                    <div class="pomo-panel-section">
+                        <h3 class="panel-title">Link to Goal</h3>
+                        <select id="pomoMasterySelect" class="pomo-select">
+                            <option value="">No goal linked</option>
+                        </select>
+                        <p class="pomo-hint">Focus time will count toward your mastery goal</p>
+                    </div>
+
+                    <!-- Lifetime Stats -->
+                    <div class="pomo-panel-section">
+                        <h3 class="panel-title">All Time</h3>
+                        <div class="pomo-lifetime-stats">
+                            <div class="lifetime-stat">
+                                <span class="lifetime-val" id="totalPomoSessions">0</span>
+                                <span class="lifetime-label">Total Sessions</span>
+                            </div>
+                            <div class="lifetime-stat">
+                                <span class="lifetime-val" id="totalPomoHours">0</span>
+                                <span class="lifetime-label">Hours Focused</span>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
         </section>
 
-        <!-- Mastery Page -->
+        <!-- Mastery Page - Redesigned -->
         <section class="page" id="page-mastery">
-            <header class="page-header">
-                <h1 class="page-title">Mastery Tracking</h1>
+            <header class="page-header mastery-header">
+                <div class="mastery-header-content">
+                    <h1 class="page-title">Mastery Journey</h1>
+                    <p class="mastery-subtitle">Track your path to expertise • 10,000 hours and beyond</p>
+                </div>
                 <div class="header-actions">
+                    <button class="btn btn-outline" onclick="toggleMasteryView()">
+                        <span id="masteryViewIcon"><i data-lucide="layout-grid"></i></span>
+                    </button>
                     <button class="btn btn-gold" onclick="openMasteryModal()">
-                        <span>+ New Mastery Goal</span>
+                        <span><i data-lucide="plus"></i> New Goal</span>
                     </button>
                 </div>
             </header>
 
-            <div class="mastery-grid" id="masteryGrid">
-                <!-- Mastery goals populated here -->
+            <!-- Mastery Stats Overview -->
+            <div class="mastery-overview" id="masteryOverview">
+                <div class="mastery-stat-card">
+                    <div class="mstat-icon"><i data-lucide="target"></i></div>
+                    <div class="mstat-content">
+                        <span class="mstat-value" id="totalMasteryGoals">0</span>
+                        <span class="mstat-label">Active Goals</span>
+                    </div>
+                </div>
+                <div class="mastery-stat-card">
+                    <div class="mstat-icon"><i data-lucide="clock"></i></div>
+                    <div class="mstat-content">
+                        <span class="mstat-value" id="totalMasteryHours">0h</span>
+                        <span class="mstat-label">Total Hours</span>
+                    </div>
+                </div>
+                <div class="mastery-stat-card">
+                    <div class="mstat-icon"><i data-lucide="flame"></i></div>
+                    <div class="mstat-content">
+                        <span class="mstat-value" id="masteryStreak">0</span>
+                        <span class="mstat-label">Day Streak</span>
+                    </div>
+                </div>
+                <div class="mastery-stat-card">
+                    <div class="mstat-icon"><i data-lucide="trophy"></i></div>
+                    <div class="mstat-content">
+                        <span class="mstat-value" id="completedMasteries">0</span>
+                        <span class="mstat-label">Mastered</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="empty-state" id="noMastery">
-                <span class="empty-icon">⚝</span>
-                <h3>No mastery goals yet</h3>
-                <p>Track your 10,000 hour journey to mastery</p>
-                <button class="btn btn-gold" onclick="openMasteryModal()">Create Goal</button>
+            <!-- View Toggle Tabs -->
+            <div class="mastery-tabs">
+                <button class="mastery-tab active" data-tab="active" onclick="switchMasteryTab('active')">
+                    <span class="tab-icon"><i data-lucide="zap"></i></span> In Progress
+                </button>
+                <button class="mastery-tab" data-tab="completed" onclick="switchMasteryTab('completed')">
+                    <span class="tab-icon"><i data-lucide="trophy"></i></span> Completed
+                </button>
+                <button class="mastery-tab" data-tab="archived" onclick="switchMasteryTab('archived')">
+                    <span class="tab-icon"><i data-lucide="archive"></i></span> Archived
+                </button>
             </div>
 
-            <!-- Completed Mastery Section -->
-            <div id="masteryCompletedSection" style="display:none; margin-top:40px;">
-                <h2 style="color:var(--gold-primary); margin-bottom:20px; display:flex; align-items:center; gap:10px;">
-                    <span>🏆</span> Completed Goals
-                </h2>
-                <div class="mastery-grid" id="masteryCompletedGrid">
-                    <!-- Completed mastery goals populated here -->
+            <!-- Main Mastery Grid -->
+            <div class="mastery-content">
+                <div class="mastery-grid-new" id="masteryGrid">
+                    <!-- Mastery goals populated here -->
+                </div>
+
+                <div class="empty-state mastery-empty" id="noMastery">
+                    <div class="empty-illustration">
+                        <div class="empty-orbit">
+                            <span class="orbit-dot"></span>
+                            <span class="orbit-dot"></span>
+                            <span class="orbit-dot"></span>
+                        </div>
+                        <span class="empty-icon-large"><i data-lucide="star"></i></span>
+                    </div>
+                    <h3>Begin Your Mastery Journey</h3>
+                    <p>The journey of 10,000 hours begins with a single step.<br>Track any skill, habit, or discipline.</p>
+                    <div class="empty-features">
+                        <div class="empty-feature"><span><i data-lucide="timer"></i></span> Time tracking</div>
+                        <div class="empty-feature"><span><i data-lucide="hash"></i></span> Rep counting</div>
+                        <div class="empty-feature"><span><i data-lucide="bar-chart-3"></i></span> Progress milestones</div>
+                    </div>
+                    <button class="btn btn-gold btn-lg" onclick="openMasteryModal()">
+                        <span><i data-lucide="sparkles"></i></span> Create First Goal
+                    </button>
+                </div>
+
+                <!-- Completed Section -->
+                <div class="mastery-grid-new" id="masteryCompletedGrid" style="display:none;">
+                    <!-- Completed mastery goals -->
+                </div>
+
+                <!-- Archived Section -->
+                <div class="mastery-grid-new" id="masteryArchivedGrid" style="display:none;">
+                    <!-- Archived mastery goals -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Weekly Schedule Page -->
+        <section class="page" id="page-weekly-schedule">
+            <header class="page-header">
+                <h1 class="page-title">Weekly Schedule</h1>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="resetWeeklyChecks()" title="Reset all checkboxes">
+                        <i data-lucide="refresh-cw"></i> Reset
+                    </button>
+                    <button class="btn btn-gold" onclick="openRoutineModal()">
+                        <i data-lucide="plus"></i> New Routine
+                    </button>
+                </div>
+            </header>
+
+            <div class="schedule-page-layout">
+                <!-- Week Overview Grid - Main Focus -->
+                <div class="week-overview-panel">
+                    <div class="week-nav-header">
+                        <h3>Week Overview</h3>
+                        <span class="week-identifier" id="weekIdentifier">Week 2, 2026</span>
+                    </div>
+
+                    <div class="week-days-grid">
+                        <!-- Monday -->
+                        <div class="week-day-column" data-day="monday">
+                            <div class="day-column-header">
+                                <span class="day-short">Mon</span>
+                                <span class="day-date" id="mondayDate">6</span>
+                            </div>
+                            <div class="day-routines-container" id="monday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('monday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Tuesday -->
+                        <div class="week-day-column" data-day="tuesday">
+                            <div class="day-column-header">
+                                <span class="day-short">Tue</span>
+                                <span class="day-date" id="tuesdayDate">7</span>
+                            </div>
+                            <div class="day-routines-container" id="tuesday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('tuesday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Wednesday -->
+                        <div class="week-day-column" data-day="wednesday">
+                            <div class="day-column-header">
+                                <span class="day-short">Wed</span>
+                                <span class="day-date" id="wednesdayDate">8</span>
+                            </div>
+                            <div class="day-routines-container" id="wednesday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('wednesday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Thursday -->
+                        <div class="week-day-column" data-day="thursday">
+                            <div class="day-column-header">
+                                <span class="day-short">Thu</span>
+                                <span class="day-date" id="thursdayDate">9</span>
+                            </div>
+                            <div class="day-routines-container" id="thursday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('thursday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Friday -->
+                        <div class="week-day-column" data-day="friday">
+                            <div class="day-column-header">
+                                <span class="day-short">Fri</span>
+                                <span class="day-date" id="fridayDate">10</span>
+                            </div>
+                            <div class="day-routines-container" id="friday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('friday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Saturday -->
+                        <div class="week-day-column weekend" data-day="saturday">
+                            <div class="day-column-header">
+                                <span class="day-short">Sat</span>
+                                <span class="day-date" id="saturdayDate">11</span>
+                            </div>
+                            <div class="day-routines-container" id="saturday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('saturday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+
+                        <!-- Sunday -->
+                        <div class="week-day-column weekend" data-day="sunday">
+                            <div class="day-column-header">
+                                <span class="day-short">Sun</span>
+                                <span class="day-date" id="sundayDate">12</span>
+                            </div>
+                            <div class="day-routines-container" id="sunday-routines"></div>
+                            <button class="day-add-btn" onclick="openRoutineModal('sunday')">
+                                <i data-lucide="plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom: Today's Focus Sidebar -->
+                <div class="today-focus-panel">
+                    <div class="today-focus-header">
+                        <div class="today-date-badge">
+                            <span class="today-day-num" id="ritualDayNum">8</span>
+                            <span class="today-day-name" id="ritualDayName">Thu</span>
+                        </div>
+                        <div class="today-title-area">
+                            <h3>Today's Schedule</h3>
+                            <span class="today-full-date" id="ritualFullDate">Thursday, January 8</span>
+                        </div>
+                        <div class="today-progress-compact">
+                            <svg class="progress-ring-mini" viewBox="0 0 44 44">
+                                <circle class="ring-bg" cx="22" cy="22" r="18" />
+                                <circle class="ring-fill" id="sacredProgressRing" cx="22" cy="22" r="18" />
+                            </svg>
+                            <span class="progress-percent" id="sacredProgressPercent">0%</span>
+                        </div>
+                    </div>
+                    
+                    <div class="today-routines-list" id="todayRitualsList">
+                        <!-- Populated by JS -->
+                    </div>
+                    
+                    <div class="today-stats-row">
+                        <div class="mini-stat">
+                            <span class="mini-stat-value" id="ritualsCompletedToday">0</span>
+                            <span class="mini-stat-label">Done</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-stat-value" id="ritualsRemainingToday">0</span>
+                            <span class="mini-stat-label">Left</span>
+                        </div>
+                        <div class="mini-stat">
+                            <span class="mini-stat-value" id="totalWeeklyRituals">0</span>
+                            <span class="mini-stat-label">This Week</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -536,11 +1030,11 @@
             <header class="page-header">
                 <h1 class="page-title">Calendar</h1>
                 <div class="header-actions">
-                    <button class="btn btn-outline" onclick="openExportPDFModal('calendar')" title="Export to PDF">📄
+                    <button class="btn btn-outline" onclick="openExportPDFModal('calendar')" title="Export to PDF"><i data-lucide="file-text"></i>
                         Export</button>
-                    <button class="btn btn-outline" id="calendarPrev">←</button>
+                    <button class="btn btn-outline" id="calendarPrev"><i data-lucide="chevron-left"></i></button>
                     <span class="calendar-month" id="calendarMonth">December 2025</span>
-                    <button class="btn btn-outline" id="calendarNext">→</button>
+                    <button class="btn btn-outline" id="calendarNext"><i data-lucide="chevron-right"></i></button>
                 </div>
             </header>
 
@@ -567,7 +1061,7 @@
                             <p class="hint">Click on a date to see scheduled items and journal entries</p>
                         </div>
                         <div class="quick-add-container" id="calendarQuickAdd" style="display:none">
-                            <button class="btn btn-sm btn-outline" onclick="quickScheduleFlow()">+ Schedule
+                            <button class="btn btn-sm btn-outline" onclick="quickScheduleFlow()"><i data-lucide="plus"></i> Schedule
                                 Flow</button>
                         </div>
                     </div>
@@ -594,10 +1088,10 @@
             <header class="page-header">
                 <h1 class="page-title">Journal</h1>
                 <div class="header-actions">
-                    <button class="btn btn-outline" onclick="openExportPDFModal('journal')" title="Export to PDF">📄
+                    <button class="btn btn-outline" onclick="openExportPDFModal('journal')" title="Export to PDF"><i data-lucide="file-text"></i>
                         Export</button>
                     <button class="btn btn-gold" onclick="openJournalEntry()">
-                        <span>+ New Entry</span>
+                        <span><i data-lucide="plus"></i> New Entry</span>
                     </button>
                 </div>
             </header>
@@ -608,11 +1102,11 @@
                     style="flex: 1; min-width: 200px;" oninput="filterJournal()">
                 <select id="journalMoodFilter" class="input" style="width: 150px;" onchange="filterJournal()">
                     <option value="">All Moods</option>
-                    <option value="great">😊 Great</option>
-                    <option value="good">🙂 Good</option>
-                    <option value="neutral">😐 Neutral</option>
-                    <option value="low">😔 Low</option>
-                    <option value="bad">😢 Bad</option>
+                    <option value="great">Great</option>
+                    <option value="good">Good</option>
+                    <option value="neutral">Neutral</option>
+                    <option value="low">Low</option>
+                    <option value="bad">Bad</option>
                 </select>
                 <input type="date" id="journalDateFilter" class="input" style="width: 160px;"
                     onchange="filterJournal()">
@@ -625,7 +1119,7 @@
             </div>
 
             <div class="empty-state" id="noJournal">
-                <span class="empty-icon">⎔</span>
+                <span class="empty-icon"><i data-lucide="book-open"></i></span>
                 <h3>No journal entries yet</h3>
                 <p>Record your thoughts, insights, and progress</p>
                 <button class="btn btn-gold" onclick="openJournalEntry()">Write Entry</button>
@@ -796,7 +1290,7 @@
         <div class="modal-content large">
             <div class="modal-header">
                 <h2 id="flowBuilderTitle">Create New Flow</h2>
-                <button class="modal-close" onclick="closeModal('flowBuilderModal')">×</button>
+                <button class="modal-close" onclick="closeModal('flowBuilderModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <div class="form-group">
@@ -821,7 +1315,7 @@
                     <div id="flowImagePreview"
                         style="margin-top:10px; display:none; width:100%; height:150px; background-size:cover; background-position:center; border-radius:6px; position:relative;">
                         <button onclick="clearCoverImage()"
-                            style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.75rem;">✕
+                            style="position:absolute; top:5px; right:5px; background:rgba(0,0,0,0.7); color:white; border:none; border-radius:4px; padding:2px 8px; cursor:pointer; font-size:0.75rem;"><i data-lucide="x" style="width:12px;height:12px;"></i>
                             Clear</button>
                     </div>
                 </div>
@@ -868,11 +1362,11 @@
                     <div class="components-header">
                         <h3>Flow Components</h3>
                         <div class="component-buttons">
-                            <button class="btn btn-sm btn-outline" onclick="addComponent('timer')">+ Timer</button>
-                            <button class="btn btn-sm btn-outline" onclick="addComponent('stopwatch')">+
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('timer')"><i data-lucide="plus"></i> Timer</button>
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('stopwatch')"><i data-lucide="plus"></i>
                                 Stopwatch</button>
-                            <button class="btn btn-sm btn-outline" onclick="addComponent('reps')">+ Rep Counter</button>
-                            <button class="btn btn-sm btn-outline" onclick="addComponent('breathing')">+
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('reps')"><i data-lucide="plus"></i> Rep Counter</button>
+                            <button class="btn btn-sm btn-outline" onclick="addComponent('breathing')"><i data-lucide="plus"></i>
                                 Breathing</button>
                         </div>
                     </div>
@@ -891,56 +1385,106 @@
     </div>
 
     <!-- Working Builder Modal -->
+    <!-- Working Builder Modal - Redesigned -->
     <div class="modal" id="workingBuilderModal">
         <div class="modal-overlay" onclick="closeModal('workingBuilderModal')"></div>
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h2 id="workingModalTitle">Create Magick Working</h2>
-                <button class="modal-close" onclick="closeModal('workingBuilderModal')">×</button>
+        <div class="modal-content working-modal-content">
+            <div class="modal-header working-modal-header">
+                <div class="modal-header-left">
+                    <span class="modal-icon"><i data-lucide="sparkles"></i></span>
+                    <h2 id="workingModalTitle">Create Magick Working</h2>
+                </div>
+                <button class="modal-close" onclick="closeModal('workingBuilderModal')"><i data-lucide="x"></i></button>
             </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Working Name</label>
-                    <input type="text" id="workingName" placeholder="e.g., Abundance Manifestation" class="input">
+            <div class="modal-body working-modal-body">
+                <!-- Working Name -->
+                <div class="form-group working-name-group">
+                    <input type="text" id="workingName" placeholder="Name your Working..." class="working-name-input" autocomplete="off">
                 </div>
+
+                <!-- Duration Presets -->
                 <div class="form-group">
-                    <label>Intention/Goal</label>
-                    <textarea id="workingIntention" placeholder="Describe your intention..." class="input"></textarea>
+                    <label class="working-label">Duration</label>
+                    <div class="duration-presets">
+                        <button type="button" class="duration-preset" data-days="7">
+                            <span class="preset-num">7</span>
+                            <span class="preset-label">days</span>
+                        </button>
+                        <button type="button" class="duration-preset" data-days="21">
+                            <span class="preset-num">21</span>
+                            <span class="preset-label">days</span>
+                        </button>
+                        <button type="button" class="duration-preset active" data-days="40">
+                            <span class="preset-num">40</span>
+                            <span class="preset-label">days</span>
+                        </button>
+                        <button type="button" class="duration-preset" data-days="90">
+                            <span class="preset-num">90</span>
+                            <span class="preset-label">days</span>
+                        </button>
+                        <div class="duration-custom">
+                            <input type="number" id="workingDuration" value="40" min="1" max="365" class="duration-input">
+                            <span class="duration-suffix">days</span>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- Intention -->
                 <div class="form-group">
-                    <label>Affirmation</label>
-                    <textarea id="workingAffirmation" placeholder="Your affirmation text..." class="input"></textarea>
+                    <label class="working-label">
+                        <span class="label-icon"><i data-lucide="target"></i></span>
+                        Intention / Goal
+                    </label>
+                    <textarea id="workingIntention" placeholder="What do you wish to manifest or achieve?" class="working-textarea" rows="3"></textarea>
                 </div>
-                <div class="form-row">
+
+                <!-- Affirmation -->
+                <div class="form-group">
+                    <label class="working-label">
+                        <span class="label-icon"><i data-lucide="sparkle"></i></span>
+                        Affirmation <span class="label-optional">(optional)</span>
+                    </label>
+                    <textarea id="workingAffirmation" placeholder="I am... I have... I attract..." class="working-textarea affirmation-input" rows="2"></textarea>
+                </div>
+
+                <!-- Start Date & Image Row -->
+                <div class="working-details-row">
                     <div class="form-group">
-                        <label>Duration (Days)</label>
-                        <input type="number" id="workingDuration" value="40" min="1" max="365" class="input">
+                        <label class="working-label">
+                            <span class="label-icon"><i data-lucide="calendar"></i></span>
+                            Start Date
+                        </label>
+                        <input type="date" id="workingStartDate" class="working-date-input">
                     </div>
-                    <div class="form-group">
-                        <label>Start Date</label>
-                        <input type="date" id="workingStartDate" class="input">
+                    <div class="form-group working-image-group">
+                        <label class="working-label">
+                            <span class="label-icon"><i data-lucide="image"></i></span>
+                            Sigil / Image <span class="label-optional">(optional)</span>
+                        </label>
+                        <div class="image-upload-area" id="workingImageUploadArea">
+                            <input type="file" id="workingImageFile" accept="image/*" onchange="handleWorkingImageUpload(this)">
+                            <div class="upload-placeholder" id="uploadPlaceholder">
+                                <span class="upload-icon"><i data-lucide="camera"></i></span>
+                                <span>Upload sigil</span>
+                            </div>
+                            <div class="image-preview" id="workingImagePreview" style="display:none;">
+                                <img id="workingImagePreviewImg">
+                                <button type="button" class="image-remove-btn" onclick="clearWorkingImage()"><i data-lucide="x"></i></button>
+                            </div>
+                        </div>
+                        <input type="hidden" id="workingImage" value="">
                     </div>
-                </div>
-                <div class="form-group">
-                    <label>Sigil/Image</label>
-                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-                        <input type="file" id="workingImageFile" accept="image/*" class="input" style="flex:1;"
-                            onchange="handleWorkingImageUpload(this)">
-                    </div>
-                    <div id="workingImagePreview" style="display:none; margin-top:10px;">
-                        <img id="workingImagePreviewImg"
-                            style="max-width:150px; max-height:100px; border-radius:8px; border:1px solid var(--gold-dim);">
-                        <button class="btn-sm btn-outline" onclick="clearWorkingImage()"
-                            style="margin-left:10px;">Clear</button>
-                    </div>
-                    <input type="hidden" id="workingImage" value="">
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer working-modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('workingBuilderModal')">Cancel</button>
-                <button class="btn btn-gold" id="workingSaveBtn" onclick="saveWorking()">Begin Working</button>
+                <button class="btn btn-gold working-save-btn" id="workingSaveBtn" onclick="saveWorking()">
+                    <span class="save-icon"><i data-lucide="sparkles"></i></span>
+                    Begin Working
+                </button>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Breathing Pattern Manager Modal -->
@@ -949,7 +1493,7 @@
         <div class="modal-content large">
             <div class="modal-header">
                 <h2>Breathing Patterns</h2>
-                <button class="modal-close" onclick="closeBreathingPatternModal()">×</button>
+                <button class="modal-close" onclick="closeBreathingPatternModal()"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <div style="margin-bottom:20px;">
@@ -968,7 +1512,7 @@
                     <div style="margin:15px 0;">
                         <label style="display:flex; justify-content:space-between; align-items:center;">
                             <span>Breathing Phases</span>
-                            <button class="btn btn-sm btn-outline" onclick="addBreathingPhase()">+ Add Phase</button>
+                            <button class="btn btn-sm btn-outline" onclick="addBreathingPhase()"><i data-lucide="plus"></i> Add Phase</button>
                         </label>
                         <div id="breathingPhasesList" style="margin-top:10px;"></div>
                     </div>
@@ -984,133 +1528,337 @@
     </div>
 
     <!-- Task Modal -->
+    <!-- Task Modal - Redesigned -->
     <div class="modal" id="taskModal">
         <div class="modal-overlay" onclick="closeModal('taskModal')"></div>
-        <div class="modal-content">
+        <div class="modal-content task-modal-content">
             <div class="modal-header">
-                <h2 id="taskModalTitle">Add Task</h2>
-                <button class="modal-close" onclick="closeModal('taskModal')">×</button>
+                <h2 id="taskModalTitle">
+                    <span class="modal-title-icon"><i data-lucide="sparkles"></i></span>
+                    New Task
+                </h2>
+                <button class="modal-close" onclick="closeModal('taskModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Task Name</label>
-                    <input type="text" id="taskName" placeholder="e.g., 50 Push-ups" class="input">
+                <!-- Task Name -->
+                <div class="form-group task-name-group">
+                    <input type="text" id="taskName" placeholder="What needs to be done?" class="task-name-input" autocomplete="off">
                 </div>
-                <div class="form-group">
-                    <label>Category</label>
-                    <select id="taskCategory" class="input">
-                        <option value="general">General</option>
-                        <option value="fitness">Fitness</option>
-                        <option value="study">Study</option>
-                        <option value="spiritual">Spiritual</option>
-                        <option value="work">Work</option>
-                    </select>
+
+                <!-- Quick Options Row -->
+                <div class="task-options-row">
+                    <!-- Category Selector -->
+                    <div class="task-option-group">
+                        <label class="option-label">Category</label>
+                        <div class="category-chips" id="taskCategoryChips">
+                            <button type="button" class="category-chip active" data-value="general">
+                                <span class="chip-icon"><i data-lucide="pin"></i></span>
+                                <span>General</span>
+                            </button>
+                            <button type="button" class="category-chip" data-value="work">
+                                <span class="chip-icon"><i data-lucide="briefcase"></i></span>
+                                <span>Work</span>
+                            </button>
+                            <button type="button" class="category-chip" data-value="personal">
+                                <span class="chip-icon"><i data-lucide="user"></i></span>
+                                <span>Personal</span>
+                            </button>
+                            <button type="button" class="category-chip" data-value="health">
+                                <span class="chip-icon"><i data-lucide="heart-pulse"></i></span>
+                                <span>Health</span>
+                            </button>
+                            <button type="button" class="category-chip" data-value="study">
+                                <span class="chip-icon"><i data-lucide="book-open"></i></span>
+                                <span>Study</span>
+                            </button>
+                            <button type="button" class="category-chip" data-value="spiritual">
+                                <span class="chip-icon"><i data-lucide="sparkles"></i></span>
+                                <span>Spiritual</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="taskCategory" value="general">
+                    </div>
+
+                    <!-- Priority Selector -->
+                    <div class="task-option-group">
+                        <label class="option-label">Priority</label>
+                        <div class="priority-selector" id="taskPrioritySelector">
+                            <button type="button" class="priority-btn low" data-value="low">
+                                <span class="priority-dot"></span>
+                                <span>Low</span>
+                            </button>
+                            <button type="button" class="priority-btn medium active" data-value="medium">
+                                <span class="priority-dot"></span>
+                                <span>Medium</span>
+                            </button>
+                            <button type="button" class="priority-btn high" data-value="high">
+                                <span class="priority-dot"></span>
+                                <span>High</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="taskPriority" value="medium">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Priority</label>
-                    <select id="taskPriority" class="input">
-                        <option value="low">Low</option>
-                        <option value="medium">Medium</option>
-                        <option value="high">High</option>
-                    </select>
+
+                <!-- Due Date & Description Row -->
+                <div class="task-details-row">
+                    <div class="task-option-group">
+                        <label class="option-label">Due Date</label>
+                        <div class="date-input-wrapper">
+                            <span class="date-icon"><i data-lucide="calendar"></i></span>
+                            <input type="date" id="taskDueDate" class="date-input">
+                            <button type="button" class="date-clear-btn" onclick="clearTaskDueDate()" title="Clear date"><i data-lucide="x"></i></button>
+                        </div>
+                    </div>
+                    <div class="task-option-group task-desc-group">
+                        <label class="option-label">Notes <span class="optional-tag">(optional)</span></label>
+                        <textarea id="taskDescription" placeholder="Add any details..." class="task-description-input" rows="2"></textarea>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Due Date (optional)</label>
-                    <input type="date" id="taskDueDate" class="input">
+
+                <!-- Subtasks (Optional) -->
+                <div class="task-subtasks-section">
+                    <div class="subtasks-header" onclick="toggleSubtasksPanel()">
+                        <span class="subtasks-icon"><i data-lucide="list-checks"></i></span>
+                        <span>Subtasks</span>
+                        <span class="subtasks-count" id="subtasksCount">(0)</span>
+                        <span class="subtasks-toggle"><i data-lucide="chevron-down"></i></span>
+                    </div>
+                    <div class="subtasks-panel" id="subtasksPanel" style="display:none;">
+                        <div class="subtasks-list" id="subtasksList"></div>
+                        <div class="add-subtask-row">
+                            <input type="text" id="newSubtaskInput" placeholder="Add a subtask..." class="subtask-input" onkeypress="handleSubtaskKeypress(event)">
+                            <button type="button" class="add-subtask-btn" onclick="addSubtask()"><i data-lucide="plus"></i></button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer task-modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('taskModal')">Cancel</button>
-                <button class="btn btn-gold" onclick="saveTask()">Save Task</button>
+                <button class="btn btn-gold task-save-btn" onclick="saveTask()">
+                    <span class="save-icon"><i data-lucide="check"></i></span>
+                    Save Task
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Mastery Modal -->
+    <!-- Mastery Modal - Redesigned -->
     <div class="modal" id="masteryModal">
         <div class="modal-overlay" onclick="closeModal('masteryModal')"></div>
-        <div class="modal-content">
+        <div class="modal-content mastery-modal-content">
             <div class="modal-header">
-                <h2 id="masteryModalTitle">New Mastery Goal</h2>
-                <button class="modal-close" onclick="closeModal('masteryModal')">×</button>
+                <h2 id="masteryModalTitle">Create Mastery Goal</h2>
+                <button class="modal-close" onclick="closeModal('masteryModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
-                <div class="form-group">
-                    <label>Skill / Habit Name</label>
-                    <input type="text" id="masteryName" placeholder="e.g., Deep Meditation" class="input">
+                <!-- Step Indicator -->
+                <div class="mastery-wizard-steps">
+                    <div class="wizard-step active" data-step="1">
+                        <span class="step-num">1</span>
+                        <span class="step-label">Goal</span>
+                    </div>
+                    <div class="wizard-connector"></div>
+                    <div class="wizard-step" data-step="2">
+                        <span class="step-num">2</span>
+                        <span class="step-label">Target</span>
+                    </div>
+                    <div class="wizard-connector"></div>
+                    <div class="wizard-step" data-step="3">
+                        <span class="step-num">3</span>
+                        <span class="step-label">Style</span>
+                    </div>
                 </div>
 
-                <div class="form-row">
+                <!-- Step 1: Goal Info -->
+                <div class="wizard-panel active" data-panel="1">
                     <div class="form-group">
-                        <label>Icon</label>
-                        <div class="mastery-icon-grid" id="masteryIconGrid">
-                            <div class="mastery-icon-option active" data-icon="🧘">🧘</div>
-                            <div class="mastery-icon-option" data-icon="⚔️">⚔️</div>
-                            <div class="mastery-icon-option" data-icon="🧪">🧪</div>
-                            <div class="mastery-icon-option" data-icon="📚">📚</div>
-                            <div class="mastery-icon-option" data-icon="🎨">🎨</div>
-                            <div class="mastery-icon-option" data-icon="🎵">🎵</div>
-                            <div class="mastery-icon-option" data-icon="🏋️">🏋️</div>
-                            <div class="mastery-icon-option" data-icon="💻">💻</div>
-                            <div class="mastery-icon-option" data-icon="🌿">🌿</div>
-                            <div class="mastery-icon-option" data-icon="✨">✨</div>
+                        <label>What are you mastering?</label>
+                        <input type="text" id="masteryName" placeholder="e.g., Piano, Coding, Meditation, Drawing..." class="input mastery-input-large">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Choose an icon</label>
+                        <div class="mastery-icon-selector" id="masteryIconGrid">
+                            <div class="icon-category">
+                                <span class="icon-cat-label">Mind & Spirit</span>
+                                <div class="icon-row">
+                                    <div class="mastery-icon-btn active" data-icon="🧘">🧘</div>
+                                    <div class="mastery-icon-btn" data-icon="📚">📚</div>
+                                    <div class="mastery-icon-btn" data-icon="🧠">🧠</div>
+                                    <div class="mastery-icon-btn" data-icon="✨">✨</div>
+                                    <div class="mastery-icon-btn" data-icon="🔮">🔮</div>
+                                </div>
+                            </div>
+                            <div class="icon-category">
+                                <span class="icon-cat-label">Creative</span>
+                                <div class="icon-row">
+                                    <div class="mastery-icon-btn" data-icon="🎨">🎨</div>
+                                    <div class="mastery-icon-btn" data-icon="🎵">🎵</div>
+                                    <div class="mastery-icon-btn" data-icon="🎹">🎹</div>
+                                    <div class="mastery-icon-btn" data-icon="🎸">🎸</div>
+                                    <div class="mastery-icon-btn" data-icon="✍️">✍️</div>
+                                </div>
+                            </div>
+                            <div class="icon-category">
+                                <span class="icon-cat-label">Physical</span>
+                                <div class="icon-row">
+                                    <div class="mastery-icon-btn" data-icon="🏋️">🏋️</div>
+                                    <div class="mastery-icon-btn" data-icon="⚔️">⚔️</div>
+                                    <div class="mastery-icon-btn" data-icon="🥋">🥋</div>
+                                    <div class="mastery-icon-btn" data-icon="🏃">🏃</div>
+                                    <div class="mastery-icon-btn" data-icon="🧗">🧗</div>
+                                </div>
+                            </div>
+                            <div class="icon-category">
+                                <span class="icon-cat-label">Tech & Work</span>
+                                <div class="icon-row">
+                                    <div class="mastery-icon-btn" data-icon="💻">💻</div>
+                                    <div class="mastery-icon-btn" data-icon="🧪">🧪</div>
+                                    <div class="mastery-icon-btn" data-icon="📊">📊</div>
+                                    <div class="mastery-icon-btn" data-icon="🛠️">🛠️</div>
+                                    <div class="mastery-icon-btn" data-icon="🎮">🎮</div>
+                                </div>
+                            </div>
                         </div>
                         <input type="hidden" id="masteryIcon" value="🧘">
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Goal Type</label>
-                    <div style="display:flex; gap:10px;">
-                        <label class="btn-mastery-action" style="flex:1; cursor:pointer; padding:12px;">
-                            <input type="radio" name="masteryType" value="hours" checked
-                                onchange="toggleMasteryInput('hours')" style="display:none;">
-                            <span>⏳ Time (Hours)</span>
-                        </label>
-                        <label class="btn-mastery-action" style="flex:1; cursor:pointer; padding:12px;">
-                            <input type="radio" name="masteryType" value="reps" onchange="toggleMasteryInput('reps')"
-                                style="display:none;">
-                            <span>🔢 Count (Reps)</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-row">
+                <!-- Step 2: Target Setting -->
+                <div class="wizard-panel" data-panel="2">
                     <div class="form-group">
-                        <label id="masteryGoalLabel">Target Goal</label>
-                        <select id="masteryGoal" class="input" onchange="toggleCustomGoal()">
-                            <option value="10">10 (Novice)</option>
-                            <option value="100">100 (Adept)</option>
-                            <option value="1000">1,000 (Expert)</option>
-                            <option value="10000">10,000 (Master)</option>
-                            <option value="custom">Custom Value</option>
-                        </select>
+                        <label>How do you measure progress?</label>
+                        <div class="mastery-type-selector">
+                            <label class="type-card active" data-type="hours">
+                                <input type="radio" name="masteryType" value="hours" checked style="display:none;">
+                                <div class="type-icon"><i data-lucide="clock"></i></div>
+                                <div class="type-info">
+                                    <span class="type-title">Time-Based</span>
+                                    <span class="type-desc">Track hours practiced</span>
+                                </div>
+                            </label>
+                            <label class="type-card" data-type="reps">
+                                <input type="radio" name="masteryType" value="reps" style="display:none;">
+                                <div class="type-icon"><i data-lucide="hash"></i></div>
+                                <div class="type-info">
+                                    <span class="type-title">Count-Based</span>
+                                    <span class="type-desc">Track repetitions</span>
+                                </div>
+                            </label>
+                        </div>
                     </div>
-                    <div class="form-group" id="customHoursGroup" style="display:none">
-                        <label>Custom Goal</label>
-                        <input type="number" id="customHours" min="1" class="input" placeholder="Enter number">
+
+                    <div class="form-group">
+                        <label id="masteryGoalLabel">Set your target</label>
+                        <div class="mastery-goal-presets">
+                            <button type="button" class="goal-preset" data-value="10" onclick="selectGoalPreset(10)">
+                                <span class="preset-value">10</span>
+                                <span class="preset-label">Beginner</span>
+                            </button>
+                            <button type="button" class="goal-preset" data-value="100" onclick="selectGoalPreset(100)">
+                                <span class="preset-value">100</span>
+                                <span class="preset-label">Novice</span>
+                            </button>
+                            <button type="button" class="goal-preset" data-value="1000" onclick="selectGoalPreset(1000)">
+                                <span class="preset-value">1K</span>
+                                <span class="preset-label">Skilled</span>
+                            </button>
+                            <button type="button" class="goal-preset active" data-value="10000" onclick="selectGoalPreset(10000)">
+                                <span class="preset-value">10K</span>
+                                <span class="preset-label">Master</span>
+                            </button>
+                            <button type="button" class="goal-preset" data-value="custom" onclick="selectGoalPreset('custom')">
+                                <span class="preset-value">∞</span>
+                                <span class="preset-label">Custom</span>
+                            </button>
+                        </div>
+                        <input type="hidden" id="masteryGoal" value="10000">
+                        <div class="custom-goal-input" id="customHoursGroup" style="display:none;">
+                            <input type="number" id="customHours" min="1" class="input" placeholder="Enter your target number">
+                        </div>
+                    </div>
+
+                    <div class="mastery-milestone-preview">
+                        <span class="preview-label">Your Milestones</span>
+                        <div class="milestones-mini" id="milestonesPreview">
+                            <div class="milestone-dot" data-pct="25"><span>25%</span></div>
+                            <div class="milestone-dot" data-pct="50"><span>50%</span></div>
+                            <div class="milestone-dot" data-pct="75"><span>75%</span></div>
+                            <div class="milestone-dot" data-pct="100"><span>100%</span></div>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Theme Color</label>
-                    <div class="color-picker">
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#d4af37"
-                                checked><span style="background:#d4af37"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#9b59b6"><span
-                                style="background:#9b59b6"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#3498db"><span
-                                style="background:#3498db"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#2ecc71"><span
-                                style="background:#2ecc71"></span></label>
-                        <label class="color-option"><input type="radio" name="masteryColor" value="#e74c3c"><span
-                                style="background:#e74c3c"></span></label>
+                <!-- Step 3: Styling -->
+                <div class="wizard-panel" data-panel="3">
+                    <div class="form-group">
+                        <label>Choose your theme color</label>
+                        <div class="mastery-color-picker">
+                            <label class="color-btn active" data-color="#d4af37">
+                                <input type="radio" name="masteryColor" value="#d4af37" checked style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #d4af37, #f0d060);"></span>
+                                <span class="color-name">Gold</span>
+                            </label>
+                            <label class="color-btn" data-color="#9b59b6">
+                                <input type="radio" name="masteryColor" value="#9b59b6" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #9b59b6, #d4a5ff);"></span>
+                                <span class="color-name">Mystic</span>
+                            </label>
+                            <label class="color-btn" data-color="#3498db">
+                                <input type="radio" name="masteryColor" value="#3498db" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #3498db, #85c1e9);"></span>
+                                <span class="color-name">Ocean</span>
+                            </label>
+                            <label class="color-btn" data-color="#2ecc71">
+                                <input type="radio" name="masteryColor" value="#2ecc71" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #2ecc71, #82e0aa);"></span>
+                                <span class="color-name">Forest</span>
+                            </label>
+                            <label class="color-btn" data-color="#e74c3c">
+                                <input type="radio" name="masteryColor" value="#e74c3c" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #e74c3c, #f1948a);"></span>
+                                <span class="color-name">Fire</span>
+                            </label>
+                            <label class="color-btn" data-color="#1abc9c">
+                                <input type="radio" name="masteryColor" value="#1abc9c" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #1abc9c, #76d7c4);"></span>
+                                <span class="color-name">Teal</span>
+                            </label>
+                            <label class="color-btn" data-color="#f39c12">
+                                <input type="radio" name="masteryColor" value="#f39c12" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #f39c12, #f8c471);"></span>
+                                <span class="color-name">Amber</span>
+                            </label>
+                            <label class="color-btn" data-color="#e91e63">
+                                <input type="radio" name="masteryColor" value="#e91e63" style="display:none;">
+                                <span class="color-swatch" style="background: linear-gradient(135deg, #e91e63, #f48fb1);"></span>
+                                <span class="color-name">Rose</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Goal Preview Card -->
+                    <div class="mastery-preview-card" id="masteryPreviewCard">
+                        <div class="preview-card-header">
+                            <span class="preview-icon" id="previewIcon">🧘</span>
+                            <span class="preview-name" id="previewName">Your Goal</span>
+                        </div>
+                        <div class="preview-progress">
+                            <div class="preview-bar">
+                                <div class="preview-fill" id="previewFill"></div>
+                            </div>
+                            <span class="preview-target" id="previewTarget">0 / 10,000 hours</span>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer mastery-modal-footer">
+                <button class="btn btn-outline" id="masteryPrevBtn" onclick="masteryWizardPrev()" style="display:none;"><i data-lucide="arrow-left"></i> Back</button>
+                <div class="footer-spacer"></div>
                 <button class="btn btn-outline" onclick="closeModal('masteryModal')">Cancel</button>
-                <button class="btn btn-gold" id="masterySaveBtn" onclick="saveMastery()">Create Mastery</button>
+                <button class="btn btn-gold" id="masteryNextBtn" onclick="masteryWizardNext()">Next <i data-lucide="arrow-right"></i></button>
+                <button class="btn btn-gold" id="masterySaveBtn" onclick="saveMastery()" style="display:none;">Create Goal</button>
             </div>
         </div>
     </div>
@@ -1121,7 +1869,7 @@
         <div class="modal-content large">
             <div class="modal-header">
                 <h2 id="journalModalTitle">New Journal Entry</h2>
-                <button class="modal-close" onclick="closeModal('journalModal')">×</button>
+                <button class="modal-close" onclick="closeModal('journalModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <input type="hidden" id="journalEditId" value="">
@@ -1175,7 +1923,7 @@
         <div class="modal-content small">
             <div class="modal-header">
                 <h2>Quick Timer</h2>
-                <button class="modal-close" onclick="closeModal('quickTimerModal')">×</button>
+                <button class="modal-close" onclick="closeModal('quickTimerModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <div class="form-row">
@@ -1202,7 +1950,7 @@
         <div class="modal-content small">
             <div class="modal-header">
                 <h2 id="confirmTitle">Confirm</h2>
-                <button class="modal-close" onclick="closeModal('confirmModal')">×</button>
+                <button class="modal-close" onclick="closeModal('confirmModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <p id="confirmMessage">Are you sure?</p>
@@ -1217,7 +1965,7 @@
     <!-- Flow Runner (Fullscreen) -->
     <div class="flow-runner" id="flowRunner">
         <div class="runner-background"></div>
-        <button class="runner-exit" onclick="exitFlowRunner()">×</button>
+        <button class="runner-exit" onclick="exitFlowRunner()"><i data-lucide="x"></i></button>
 
         <div class="runner-progress">
             <div class="runner-progress-bar" id="runnerProgressBar"></div>
@@ -1239,7 +1987,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2 id="previewFlowTitle">Flow Title</h2>
-                <button class="modal-close" onclick="closeModal('flowPreviewModal')">×</button>
+                <button class="modal-close" onclick="closeModal('flowPreviewModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <p id="previewFlowDesc" style="color:var(--text-muted); margin-bottom:20px;"></p>
@@ -1259,25 +2007,85 @@
 
     <!-- Breathing Visualizer Overlay -->
     <div class="breathing-overlay" id="breathingOverlay">
-        <div class="breathing-particles" id="breathingParticles"></div>
-        <button class="overlay-close" onclick="closeBreathingExercise()">×</button>
-        <div class="breathing-controls-top">
-            <select id="breathingPattern" class="input-transparent">
-                <!-- Options populated dynamically from config.js -->
-            </select>
+        <div class="breath-cosmos" id="breathCosmos"></div>
+        <div class="breath-orbs">
+            <div class="breath-orb breath-orb-1"></div>
+            <div class="breath-orb breath-orb-2"></div>
+            <div class="breath-orb breath-orb-3"></div>
         </div>
-        <div class="breathing-container">
-            <div class="breathing-circle">
-                <div class="breathing-timer" id="breathingTimer"></div>
-                <div class="breathing-text" id="breathingText">Ready</div>
+        
+        <button class="breath-close" onclick="closeBreathingExercise()">
+            <i data-lucide="x"></i>
+        </button>
+        
+        <div class="breath-content">
+            <!-- Top Controls -->
+            <div class="breath-top-bar">
+                <div class="breath-pattern-select">
+                    <i data-lucide="wind"></i>
+                    <select id="breathingPattern" class="breath-select">
+                        <!-- Options populated dynamically from config.js -->
+                    </select>
+                </div>
+                <button class="breath-customize-btn" onclick="openBreathingPatternManager()">
+                    <i data-lucide="settings-2"></i>
+                    <span>Customize</span>
+                </button>
             </div>
-            <div class="breathing-instruction" id="breathingInstruction">Select a pattern and press Start</div>
+            
+            <!-- Main Visualization -->
+            <div class="breath-main">
+                <div class="breath-ring-container">
+                    <!-- Outer decorative rings -->
+                    <svg class="breath-rings-svg" viewBox="0 0 400 400">
+                        <circle class="breath-ring-outer" cx="200" cy="200" r="190" />
+                        <circle class="breath-ring-middle" cx="200" cy="200" r="170" />
+                        <circle class="breath-ring-progress" id="breathProgressRing" cx="200" cy="200" r="150" />
+                    </svg>
+                    
+                    <!-- Central orb -->
+                    <div class="breath-central-orb" id="breathingCircle">
+                        <div class="breath-orb-glow"></div>
+                        <div class="breath-orb-core">
+                            <span class="breath-timer" id="breathingTimer"></span>
+                            <span class="breath-phase" id="breathingText">Ready</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Instruction Card -->
+                <div class="breath-instruction-card" id="breathingInstruction">
+                    <i data-lucide="sparkles"></i>
+                    <span>Select a pattern and press Start</span>
+                </div>
+            </div>
+            
+            <!-- Bottom Controls -->
+            <div class="breath-controls">
+                <div class="breath-stats">
+                    <div class="breath-stat">
+                        <span class="breath-stat-value" id="breathCycleCount">0</span>
+                        <span class="breath-stat-label">Cycles</span>
+                    </div>
+                    <div class="breath-stat">
+                        <span class="breath-stat-value" id="breathSessionTime">0:00</span>
+                        <span class="breath-stat-label">Session</span>
+                    </div>
+                </div>
+                
+                <button class="btn-breath-start" id="breathingStartBtn" onclick="startBreathingLoop()">
+                    <i data-lucide="play"></i>
+                    <span>Begin Session</span>
+                </button>
+                <button class="btn-breath-stop" id="breathingStopBtn" onclick="stopBreathingLoop()" style="display:none;">
+                    <i data-lucide="pause"></i>
+                    <span>Pause</span>
+                </button>
+            </div>
         </div>
-        <div class="breathing-controls-bottom">
-            <button class="btn btn-gold" id="breathingStartBtn" onclick="startBreathingLoop()">Start</button>
-            <button class="btn btn-outline" id="breathingStopBtn" onclick="stopBreathingLoop()"
-                style="display:none;">Stop</button>
-        </div>
+        
+        <!-- Hidden particle container for compatibility -->
+        <div class="breathing-particles" id="breathingParticles" style="display:none;"></div>
     </div>
 
     <!-- Working Detail Modal -->
@@ -1286,7 +2094,7 @@
         <div class="modal-content large">
             <div class="modal-header">
                 <h2 id="workingDetailTitle">Working Details</h2>
-                <button class="modal-close" onclick="closeModal('workingDetailModal')">×</button>
+                <button class="modal-close" onclick="closeModal('workingDetailModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body" id="workingDetailBody">
                 <!-- Populated dynamically -->
@@ -1294,6 +2102,227 @@
             <div class="modal-footer">
                 <button class="btn btn-outline" onclick="closeModal('workingDetailModal')">Close</button>
                 <button class="btn btn-gold" id="workingDetailAction">Practice Today</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weekly Schedule Item Modal -->
+    <div class="modal" id="routineModal">
+        <div class="modal-overlay" onclick="closeModal('routineModal')"></div>
+        <div class="modal-content routine-modal-content">
+            <div class="routine-modal-header">
+                <div class="routine-modal-icon">
+                    <i data-lucide="calendar-plus"></i>
+                </div>
+                <h2 id="routineModalTitle">Create New Routine</h2>
+                <p class="routine-modal-subtitle">Schedule your weekly activities</p>
+                <button class="modal-close" onclick="closeModal('routineModal')"><i data-lucide="x"></i></button>
+            </div>
+
+            <div class="modal-body routine-modal-body">
+                <input type="hidden" id="routineItemId">
+                
+                <!-- Routine Name -->
+                <div class="routine-form-section">
+                    <label class="routine-label">
+                        <i data-lucide="type"></i>
+                        Routine Name
+                    </label>
+                    <input type="text" id="routineItemName" class="routine-input" placeholder="e.g., Morning workout, Team meeting, Study session...">
+                </div>
+
+                <!-- Days Selection - Visual Pills -->
+                <div class="routine-form-section">
+                    <label class="routine-label">
+                        <i data-lucide="calendar-days"></i>
+                        Active Days
+                    </label>
+                    <div class="routine-days-grid">
+                        <label class="routine-day-pill" data-day="monday">
+                            <input type="checkbox" name="routineDays" value="monday">
+                            <span class="pill-content">
+                                <span class="pill-short">M</span>
+                                <span class="pill-full">Monday</span>
+                            </span>
+                        </label>
+                        <label class="routine-day-pill" data-day="tuesday">
+                            <input type="checkbox" name="routineDays" value="tuesday">
+                            <span class="pill-content">
+                                <span class="pill-short">T</span>
+                                <span class="pill-full">Tuesday</span>
+                            </span>
+                        </label>
+                        <label class="routine-day-pill" data-day="wednesday">
+                            <input type="checkbox" name="routineDays" value="wednesday">
+                            <span class="pill-content">
+                                <span class="pill-short">W</span>
+                                <span class="pill-full">Wednesday</span>
+                            </span>
+                        </label>
+                        <label class="routine-day-pill" data-day="thursday">
+                            <input type="checkbox" name="routineDays" value="thursday">
+                            <span class="pill-content">
+                                <span class="pill-short">T</span>
+                                <span class="pill-full">Thursday</span>
+                            </span>
+                        </label>
+                        <label class="routine-day-pill" data-day="friday">
+                            <input type="checkbox" name="routineDays" value="friday">
+                            <span class="pill-content">
+                                <span class="pill-short">F</span>
+                                <span class="pill-full">Friday</span>
+                            </span>
+                        </label>
+                        <label class="routine-day-pill weekend" data-day="saturday">
+                            <input type="checkbox" name="routineDays" value="saturday">
+                            <span class="pill-content">
+                                <span class="pill-short">S</span>
+                                <span class="pill-full">Saturday</span>
+                            </span>
+                        </label>
+                        <label class="routine-day-pill weekend" data-day="sunday">
+                            <input type="checkbox" name="routineDays" value="sunday">
+                            <span class="pill-content">
+                                <span class="pill-short">S</span>
+                                <span class="pill-full">Sunday</span>
+                            </span>
+                        </label>
+                    </div>
+                    <div class="quick-day-actions">
+                        <button type="button" class="quick-day-btn" onclick="selectAllDays()">Every Day</button>
+                        <button type="button" class="quick-day-btn" onclick="selectWeekdays()">Weekdays</button>
+                        <button type="button" class="quick-day-btn" onclick="selectWeekends()">Weekends</button>
+                    </div>
+                </div>
+
+                <!-- Category Selection - Visual Cards -->
+                <div class="routine-form-section">
+                    <label class="routine-label">
+                        <i data-lucide="shapes"></i>
+                        Category
+                    </label>
+                    <div class="routine-category-grid">
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="meditation">
+                            <span class="category-card-content">
+                                <span class="category-icon">🧘</span>
+                                <span class="category-name">Meditation</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="chakra">
+                            <span class="category-card-content">
+                                <span class="category-icon">🌈</span>
+                                <span class="category-name">Chakra Work</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="magick">
+                            <span class="category-card-content">
+                                <span class="category-icon">🔮</span>
+                                <span class="category-name">Magick</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="health">
+                            <span class="category-card-content">
+                                <span class="category-icon">💪</span>
+                                <span class="category-name">Health</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="personal" checked>
+                            <span class="category-card-content">
+                                <span class="category-icon">✨</span>
+                                <span class="category-name">Personal</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="learning">
+                            <span class="category-card-content">
+                                <span class="category-icon">📚</span>
+                                <span class="category-name">Learning</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="creative">
+                            <span class="category-card-content">
+                                <span class="category-icon">🎨</span>
+                                <span class="category-name">Creative</span>
+                            </span>
+                        </label>
+                        <label class="routine-category-card">
+                            <input type="radio" name="routineCategory" value="work">
+                            <span class="category-card-content">
+                                <span class="category-icon">💼</span>
+                                <span class="category-name">Work</span>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Color Selection -->
+                <div class="routine-form-section">
+                    <label class="routine-label">
+                        <i data-lucide="palette"></i>
+                        Color Tag
+                    </label>
+                    <div class="routine-color-swatches">
+                        <label class="routine-color-swatch" title="Gold">
+                            <input type="radio" name="routineColor" value="#d4af37" checked>
+                            <span style="--swatch-color: #d4af37"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Purple">
+                            <input type="radio" name="routineColor" value="#9370db">
+                            <span style="--swatch-color: #9370db"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Teal">
+                            <input type="radio" name="routineColor" value="#4ecdc4">
+                            <span style="--swatch-color: #4ecdc4"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Red">
+                            <input type="radio" name="routineColor" value="#ff6b6b">
+                            <span style="--swatch-color: #ff6b6b"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Mint - Growth">
+                            <input type="radio" name="routineColor" value="#95e1d3">
+                            <span style="--swatch-color: #95e1d3"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Coral - Passion">
+                            <input type="radio" name="routineColor" value="#f38181">
+                            <span style="--swatch-color: #f38181"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Lavender - Peace">
+                            <input type="radio" name="routineColor" value="#aa96da">
+                            <span style="--swatch-color: #aa96da"></span>
+                        </label>
+                        <label class="routine-color-swatch" title="Blue - Wisdom">
+                            <input type="radio" name="routineColor" value="#74b9ff">
+                            <span style="--swatch-color: #74b9ff"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Notes - Optional -->
+                <div class="routine-form-section">
+                    <label class="routine-label">
+                        <i data-lucide="scroll-text"></i>
+                        Notes <span class="optional-tag">(optional)</span>
+                    </label>
+                    <textarea id="routineItemNotes" class="routine-textarea" rows="3" placeholder="Add any instructions or reminders for this routine..."></textarea>
+                </div>
+            </div>
+
+            <div class="modal-footer routine-modal-footer">
+                <button class="btn btn-danger" id="deleteRoutineBtn" onclick="deleteRoutine()" style="display:none;">
+                    <i data-lucide="trash-2"></i>
+                </button>
+                <div style="flex:1"></div>
+                <button class="btn btn-outline" onclick="closeModal('routineModal')">Cancel</button>
+                <button class="btn btn-gold btn-glow" onclick="saveRoutine()">
+                    <i data-lucide="check"></i>
+                    <span id="saveRoutineBtnText">Create Routine</span>
+                </button>
             </div>
         </div>
     </div>
@@ -1308,7 +2337,7 @@
         <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h2>Backup Preview</h2>
-                <button class="modal-close" onclick="closeModal('importPreviewModal')">×</button>
+                <button class="modal-close" onclick="closeModal('importPreviewModal')"><i data-lucide="x"></i></button>
             </div>
             <div class="modal-body">
                 <p style="margin-bottom:20px; color:var(--text-muted);">Review the contents of this backup before
@@ -1318,7 +2347,7 @@
                 </div>
                 <div
                     style="margin-top:20px; padding:15px; background:rgba(212, 175, 55, 0.05); border:1px solid var(--border-gold); border-radius:12px;">
-                    <p style="font-size:0.85rem; color:var(--gold-primary);"><span style="margin-right:8px;">ℹ️</span>
+                    <p style="font-size:0.85rem; color:var(--gold-primary);"><span style="margin-right:8px;"><i data-lucide="info"></i></span>
                         This will merge existing data. Duplicate flows will be skipped.</p>
                 </div>
             </div>
